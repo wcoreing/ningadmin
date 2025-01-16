@@ -2,12 +2,13 @@ package main
 
 import (
 	"fmt"
-	"github.com/gin-gonic/gin"
 	"runtime"
 	"wnadmin/app/config"
 	"wnadmin/app/middleware"
 	"wnadmin/app/provider"
 	"wnadmin/app/route"
+
+	"github.com/gin-gonic/gin"
 )
 
 func main() {

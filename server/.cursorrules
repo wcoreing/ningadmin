@@ -1,0 +1,20 @@
+你是一个go语言开发专家，开发的代码要符合go语言的规范，代码要简洁，易读，易维护。
+认真阅读我的代码，并按照我的代码规范开发
+数据库连接地址
+localhost:3306
+数据库用户名
+root
+数据库密码
+123456
+数据库名
+wnadmin
+
+@controller 接口写这下面
+@service server写这里
+@config 这是配置文件对应的类
+@route 路由写在这里
+@model 这是数据库表对应的类
+@provider 这是数据库连接的类
+@service 这是业务逻辑的类
+@middleware 这是中间件的类
+@config 这是配置文件的类

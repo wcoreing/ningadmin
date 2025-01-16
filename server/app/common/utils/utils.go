@@ -15,7 +15,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-	"wnadmin/app/global"
+	"wnadmin/app/provider/mylog"
 )
 
 func GenerateFileName(originalName string) string {
@@ -137,7 +137,7 @@ func SendHttpPost(reqUrl string, requestBody map[string]string) (map[string]inte
 	resp, body, errs := request.Post(reqUrl).
 		Send(queryString).
 		End()
-	global.Log.Info("resp", resp, "body", body, "errs", errs)
+	mylog.Log.Info("resp", resp, "body", body, "errs", errs)
 	result := map[string]interface{}{}
 	json.Unmarshal([]byte(body), &result)
 	return result, nil
@@ -145,7 +145,7 @@ func SendHttpPost(reqUrl string, requestBody map[string]string) (map[string]inte
 func MyHash(data map[string]interface{}) string {
 	jsonData, _ := json.Marshal(data)
 	jsonString := string(jsonData)
-	global.Log.Info("jsonString", jsonString)
+	mylog.Log.Info("jsonString", jsonString)
 	encodedData := encodeChineseCharacters(jsonString)
 	reversedData := reverseString(encodedData)
 	encryptedData := encryptData(reversedData)
@@ -184,11 +184,4 @@ func encryptData(data string) string {
 
 func base64Encode(data string) string {
 	return base64.StdEncoding.EncodeToString([]byte(data))
-}
-
-func SnowflakeID() string {
-	// Generate a snowflake ID.
-	id := global.Snowflake.Generate()
-	fmt.Printf("Int64  ID: %d\n", id)
-	return id.String()
 }

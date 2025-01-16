@@ -2,9 +2,10 @@ package db
 
 import (
 	"fmt"
-	"gorm.io/gorm"
 	"wnadmin/app/config"
 	"wnadmin/app/provider/db/driver"
+
+	"gorm.io/gorm"
 )
 
 type DBModel struct {
@@ -15,6 +16,6 @@ var DB DBModel
 
 func init() {
 	fmt.Println(config.DB.Mysql)
-	DB.WnAdmin = driver.GormMysqlByConfig(config.DB.Mysql["studentactive"])
+	DB.WnAdmin = driver.GormMysqlByConfig(config.DB.Mysql["default"])
 
 }

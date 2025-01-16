@@ -5,21 +5,21 @@ import (
 	"github.com/parnurzeal/gorequest"
 	"net/url"
 	"strings"
-	"wnadmin/app/global"
+	"wnadmin/app/provider/mylog"
 )
 
 func Post(reqUrl string, requestBody map[string]string) ([]byte, error) {
-	global.Log.Info("reqUrl", reqUrl, "requestBody", requestBody)
+	mylog.Log.Info("reqUrl", reqUrl, "requestBody", requestBody)
 	queryString := concatenateURLParams(requestBody)
 	request := gorequest.New()
 	resp, body, errs := request.Post(reqUrl).
 		Send(queryString).
 		End()
 	if errs != nil {
-		global.Log.Error("errs", errs)
+		mylog.Log.Error("errs", errs)
 		return nil, errs[0]
 	}
-	global.Log.Info("resp", resp, "body", body, "errs", errs)
+	mylog.Log.Info("resp", resp, "body", body, "errs", errs)
 	return []byte(body), nil
 }
 func concatenateURLParams(params map[string]string) string {
