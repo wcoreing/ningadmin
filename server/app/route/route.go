@@ -12,8 +12,11 @@ func Handle(engine *gin.Engine) {
 
 	// 注册系统配置路由
 	configController := &system.ConfigController{}
+	menuController := &system.MenuController{}
+
 	systemGroup := engine.Group("/api/system")
 	{
+		// 配置管理
 		configGroup := systemGroup.Group("/config")
 		{
 			configGroup.GET("/list", configController.List)
@@ -21,6 +24,18 @@ func Handle(engine *gin.Engine) {
 			configGroup.PUT("/update", configController.Update)
 			configGroup.DELETE("/delete/:id", configController.Delete)
 			configGroup.GET("/info/:id", configController.GetInfo)
+		}
+
+		// 菜单管理
+		menuGroup := systemGroup.Group("/menu")
+		{
+			menuGroup.GET("/list", menuController.List)
+			menuGroup.POST("/add", menuController.Add)
+			menuGroup.PUT("/update", menuController.Update)
+			menuGroup.DELETE("/delete/:id", menuController.Delete)
+			menuGroup.GET("/info/:id", menuController.GetInfo)
+			menuGroup.GET("/tree", menuController.GetTree)
+			menuGroup.GET("/check-permission", menuController.CheckPermission)
 		}
 	}
 }
