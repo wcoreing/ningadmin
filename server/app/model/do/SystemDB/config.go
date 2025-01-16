@@ -23,12 +23,12 @@ type ConfigDO struct {
 
 // TableName 表名
 func (ConfigDO) TableName() string {
-	return "system_config"
+	return "sys_config"
 }
 
 // Query 获取查询构建器
 func (c *ConfigDO) Query() *gorm.DB {
-	return db.DB.WnAdmin.Table("sys_user")
+	return db.DB.WnAdmin.Model(c)
 }
 
 // Create 创建记录
