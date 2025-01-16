@@ -15,7 +15,7 @@ type ConfigDO struct {
 	ConfigValue string    `json:"configValue" gorm:"column:config_value;comment:配置值"`
 	ConfigType  string    `json:"configType" gorm:"column:config_type;comment:配置类型"`
 	ModuleKey   string    `json:"moduleKey" gorm:"column:module_key;comment:模块标识"`
-	ModuleName  string    `json:"moduleName" gorm:"column:module_name;comment:模块名称"`
+	ModuleName  string    `json:"moduleName,omitempty" gorm:"column:module_name;comment:模块名称"`
 	Remark      string    `json:"remark" gorm:"comment:备注"`
 	CreateTime  time.Time `json:"createTime" gorm:"column:create_time;autoCreateTime"`
 	UpdateTime  time.Time `json:"updateTime" gorm:"column:update_time;autoUpdateTime"`

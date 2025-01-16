@@ -1,29 +1,30 @@
 package response
 
 import (
-	"github.com/gin-gonic/gin"
 	"net/http"
 	"wnadmin/app/provider/mylog"
+
+	"github.com/gin-gonic/gin"
 )
 
 type Response struct {
-	ReturnCode int         `json:"returnCode"`
-	Data       interface{} `json:"data"`
-	ReturnMsg  string      `json:"returnMsg"`
+	Code int         `json:"code"`
+	Data interface{} `json:"data"`
+	Msg  string      `json:"msg"`
 }
 
 const (
 	ERROR   = 9999
-	SUCCESS = 0000
+	SUCCESS = 200
 )
 
-func Result(returnCode int, data interface{}, returnMsg string, c *gin.Context) {
+func Result(Code int, data interface{}, Msg string, c *gin.Context) {
 	// 开始时间
-	mylog.Log.Info("response", returnCode, data, returnMsg)
+	mylog.Log.Info("response", Code, data, Msg)
 	c.JSON(http.StatusOK, Response{
-		returnCode,
+		Code,
 		data,
-		returnMsg,
+		Msg,
 	})
 	return
 }
