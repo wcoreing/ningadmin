@@ -14,6 +14,7 @@ func Handle(engine *gin.Engine) {
 	configController := &system.ConfigController{}
 	menuController := &system.MenuController{}
 	roleController := &system.RoleController{}
+	userController := &system.UserController{}
 
 	systemGroup := engine.Group("/api/system")
 	{
@@ -50,6 +51,18 @@ func Handle(engine *gin.Engine) {
 			roleGroup.PUT("/status", roleController.UpdateStatus)
 			roleGroup.GET("/permission/:roleId", roleController.GetRolePermissions)
 			roleGroup.PUT("/permission", roleController.UpdateRolePermissions)
+		}
+
+		// 用户管理
+		userGroup := systemGroup.Group("/user")
+		{
+			userGroup.GET("/list", userController.List)
+			userGroup.GET("/info/:userId", userController.GetInfo)
+			userGroup.POST("", userController.Add)
+			userGroup.PUT("", userController.Update)
+			userGroup.DELETE("/delete/:userId", userController.Delete)
+			userGroup.PUT("/status", userController.UpdateStatus)
+			userGroup.PUT("/password", userController.ResetPassword)
 		}
 	}
 }
