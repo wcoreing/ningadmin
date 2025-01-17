@@ -1,0 +1,298 @@
+openapi: 3.0.0
+info:
+  title: 登录认证接口文档
+  description: 提供用户登录、登出、获取用户信息等认证相关接口
+  version: 1.0.0
+  contact:
+    name: WnAdmin Team
+    email: support@wnadmin.com
+
+servers:
+  - url: /api
+    description: 开发环境
+
+components:
+  schemas:
+    LoginReq:
+      type: object
+      required:
+        - userName
+        - password
+      properties:
+        userName:
+          type: string
+          description: 用户名
+          example: admin
+          minLength: 2
+          maxLength: 30
+        password:
+          type: string
+          description: 密码
+          example: "123456"
+          minLength: 6
+          maxLength: 20
+          format: password
+
+    UserInfo:
+      type: object
+      properties:
+        userId:
+          type: integer
+          format: int64
+          description: 用户ID
+          example: 1
+        userName:
+          type: string
+          description: 用户名
+          example: "admin"
+        nickName:
+          type: string
+          description: 用户昵称
+          example: "管理员"
+        email:
+          type: string
+          format: email
+          description: 用户邮箱
+          example: "admin@example.com"
+        phonenumber:
+          type: string
+          description: 手机号码
+          example: "13800138000"
+          pattern: "^1[3-9]\\d{9}$"
+        sex:
+          type: string
+          enum: ['0', '1', '2']
+          description: 用户性别（0男 1女 2未知）
+          example: "0"
+        avatar:
+          type: string
+          description: 头像地址
+          example: "http://example.com/avatar.jpg"
+        status:
+          type: string
+          enum: ['0', '1']
+          description: 帐号状态（0正常 1停用）
+          example: "0"
+        createTime:
+          type: string
+          format: date-time
+          description: 创建时间
+          example: "2024-01-17T10:00:00Z"
+
+    LoginResp:
+      type: object
+      properties:
+        token:
+          type: string
+          description: 访问令牌
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        userInfo:
+          $ref: '#/components/schemas/UserInfo'
+
+    Result:
+      type: object
+      properties:
+        code:
+          type: integer
+          description: 响应码
+          example: 200
+        msg:
+          type: string
+          description: 响应消息
+          example: "操作成功"
+        data:
+          type: object
+          description: 响应数据
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: 请在请求头中添加 Bearer {token} 进行身份认证
+
+paths:
+  /login:
+    post:
+      tags:
+        - 认证管理
+      summary: 用户登录
+      description: |
+        用户登录并获取访问令牌
+        
+        请求参数说明：
+        - userName: 用户名，必填，2-30个字符
+        - password: 密码，必填，6-20个字符
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginReq'
+            examples:
+              success:
+                summary: 登录请求示例
+                value:
+                  userName: "admin"
+                  password: "123456"
+      responses:
+        '200':
+          description: |
+            登录成功
+            
+            返回数据说明：
+            - token: JWT访问令牌
+            - userInfo: 用户详细信息
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Result'
+                  - properties:
+                      data:
+                        $ref: '#/components/schemas/LoginResp'
+              examples:
+                success:
+                  summary: 登录成功响应示例
+                  value:
+                    code: 200
+                    msg: "登录成功"
+                    data:
+                      token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                      userInfo:
+                        userId: 1
+                        userName: "admin"
+                        nickName: "管理员"
+                        email: "admin@example.com"
+                        phonenumber: "13800138000"
+                        sex: "0"
+                        avatar: "http://example.com/avatar.jpg"
+                        status: "0"
+                        createTime: "2024-01-17T10:00:00Z"
+        '201':
+          description: |
+            登录失败
+            
+            可能的错误原因：
+            - 用户名或密码错误
+            - 账号已被停用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Result'
+              examples:
+                error:
+                  summary: 登录失败响应示例
+                  value:
+                    code: 201
+                    msg: "用户名或密码错误"
+                    data: null
+
+  /logout:
+    post:
+      tags:
+        - 认证管理
+      summary: 用户登出
+      description: |
+        用户退出登录
+        
+        需要在请求头中携带有效的访问令牌
+      operationId: logout
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: 登出成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Result'
+              examples:
+                success:
+                  summary: 登出成功响应示例
+                  value:
+                    code: 200
+                    msg: "退出成功"
+                    data: null
+        '401':
+          description: 未授权
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Result'
+              examples:
+                error:
+                  summary: 未授权响应示例
+                  value:
+                    code: 401
+                    msg: "未提供令牌"
+                    data: null
+
+  /user/info:
+    get:
+      tags:
+        - 认证管理
+      summary: 获取当前用户信息
+      description: |
+        获取当前登录用户的详细信息
+        
+        需要在请求头中携带有效的访问令牌
+      operationId: getUserInfo
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: |
+            获取成功
+            
+            返回数据说明：
+            - userId: 用户ID
+            - userName: 用户名
+            - nickName: 用户昵称
+            - email: 用户邮箱
+            - phonenumber: 手机号码
+            - sex: 用户性别（0男 1女 2未知）
+            - avatar: 头像地址
+            - status: 帐号状态（0正常 1停用）
+            - createTime: 创建时间
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Result'
+                  - properties:
+                      data:
+                        $ref: '#/components/schemas/UserInfo'
+              examples:
+                success:
+                  summary: 获取用户信息成功响应示例
+                  value:
+                    code: 200
+                    msg: "获取成功"
+                    data:
+                      userId: 1
+                      userName: "admin"
+                      nickName: "管理员"
+                      email: "admin@example.com"
+                      phonenumber: "13800138000"
+                      sex: "0"
+                      avatar: "http://example.com/avatar.jpg"
+                      status: "0"
+                      createTime: "2024-01-17T10:00:00Z"
+        '401':
+          description: 未授权
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Result'
+              examples:
+                error:
+                  summary: 未授权响应示例
+                  value:
+                    code: 401
+                    msg: "无效的令牌"
+                    data: null
+
+security:
+  - bearerAuth: [] 
