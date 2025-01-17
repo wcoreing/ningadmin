@@ -27,7 +27,7 @@ func (RoleDO) TableName() string {
 
 // Query 获取查询构建器
 func (r *RoleDO) Query() *gorm.DB {
-	return db.DB.WnAdmin.Model(r)
+	return db.DB.WnAdmin.Model(r).Where("del_flag = ?", "0")
 }
 
 // Create 创建记录
@@ -55,18 +55,18 @@ func (r *RoleDO) Delete() error {
 
 // First 获取第一条记录
 func (r *RoleDO) First() error {
-	return r.Query().Where("del_flag = ?", "0").First(r).Error
+	return r.Query().First(r).Error
 }
 
 // Find 查询多条记录
 func (r *RoleDO) Find(dest interface{}) error {
-	return r.Query().Where("del_flag = ?", "0").Find(dest).Error
+	return r.Query().Find(dest).Error
 }
 
 // CheckRoleKeyExists 检查角色标识是否存在
 func (r *RoleDO) CheckRoleKeyExists(roleKey string, excludeID int64) (bool, error) {
 	var count int64
-	db := r.Query().Where("role_key = ? AND del_flag = ?", roleKey, "0")
+	db := r.Query().Where("role_key = ? ", roleKey)
 	if excludeID > 0 {
 		db = db.Where("role_id != ?", excludeID)
 	}

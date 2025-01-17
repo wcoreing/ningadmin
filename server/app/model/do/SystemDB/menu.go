@@ -35,7 +35,7 @@ func (MenuDO) TableName() string {
 
 // Query 获取查询构建器
 func (m *MenuDO) Query() *gorm.DB {
-	return db.DB.WnAdmin.Model(m)
+	return db.DB.WnAdmin.Model(m).Where("del_flag = ?", "0")
 }
 
 // Create 创建记录
@@ -55,18 +55,18 @@ func (m *MenuDO) Delete() error {
 
 // First 获取第一条记录
 func (m *MenuDO) First() error {
-	return m.Query().Where("del_flag = ?", "0").First(m).Error
+	return m.Query().First(m).Error
 }
 
 // Find 查询多条记录
 func (m *MenuDO) Find(dest interface{}) error {
-	return m.Query().Where("del_flag = ?", "0").Find(dest).Error
+	return m.Query().Find(dest).Error
 }
 
 // CheckPermissionExists 检查权限标识是否存在
 func (m *MenuDO) CheckPermissionExists(permission string, excludeID int64) (bool, error) {
 	var count int64
-	db := m.Query().Where("permission_code = ? AND del_flag = ?", permission, "0")
+	db := m.Query().Where("permission_code = ? ", permission)
 	if excludeID > 0 {
 		db = db.Where("permission_id != ?", excludeID)
 	}

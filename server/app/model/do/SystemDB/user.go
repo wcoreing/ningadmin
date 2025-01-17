@@ -32,7 +32,7 @@ func (UserDO) TableName() string {
 
 // Query 获取查询构建器
 func (u *UserDO) Query() *gorm.DB {
-	return db.DB.WnAdmin.Model(u)
+	return db.DB.WnAdmin.Model(u).Where("del_flag = ?", "0")
 }
 
 // Create 创建记录
@@ -52,12 +52,12 @@ func (u *UserDO) Delete() error {
 
 // First 获取第一条记录
 func (u *UserDO) First() error {
-	return u.Query().Where("del_flag = ?", "0").First(u).Error
+	return u.Query().First(u).Error
 }
 
 // Find 查询多条记录
 func (u *UserDO) Find(dest interface{}) error {
-	return u.Query().Where("del_flag = ?", "0").Find(dest).Error
+	return u.Query().Find(dest).Error
 }
 
 // CheckUserNameExists 检查用户名是否存在
