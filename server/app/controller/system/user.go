@@ -3,116 +3,83 @@ package system
 import (
 	"strconv"
 	"wnadmin/app/common/response"
-	"wnadmin/app/common/utils"
-	"wnadmin/app/model/do/SystemDB"
+	"wnadmin/app/model/dto"
+	"wnadmin/app/service/system"
 
 	"github.com/gin-gonic/gin"
 )
 
-type UserController struct{}
+// UserController 用户控制器
+type UserController struct {
+	userService *system.UserService
+}
+
+// NewUserController 创建用户控制器
+func NewUserController() *UserController {
+	return &UserController{
+		userService: &system.UserService{},
+	}
+}
 
 // List 获取用户列表
+// @Summary 获取用户列表
+// @Description 获取用户列表，支持分页和条件查询
+// @Tags 系统用户
+// @Accept application/x-www-form-urlencoded
+// @Produce json
+// @Param pageNum query int false "页码"
+// @Param pageSize query int false "每页数量"
+// @Param keyword query string false "关键字"
+// @Param status query string false "状态"
+// @Success 200 {object} response.Response "成功"
+// @Router /system/user/list [get]
 func (c *UserController) List(ctx *gin.Context) {
-	var query struct {
-		PageNum  int    `form:"pageNum"`
-		PageSize int    `form:"pageSize"`
-		UserName string `form:"userName"`
-		Status   string `form:"status"`
-	}
-
+	var query dto.UserQuery
 	if err := ctx.ShouldBindQuery(&query); err != nil {
-		response.FailWithMessage(201, err.Error(), ctx)
+		response.FailWithMessage(201, "参数错误: "+err.Error(), ctx)
 		return
 	}
 
-	if query.PageNum < 1 {
+	// 设置默认值
+	if query.PageNum <= 0 {
 		query.PageNum = 1
 	}
-	if query.PageSize < 1 {
+	if query.PageSize <= 0 {
 		query.PageSize = 10
 	}
 
-	userDO := &SystemDB.UserDO{}
-	db := userDO.Query().Where("del_flag = ?", "0")
-
-	if query.UserName != "" {
-		db = db.Where("user_name LIKE ?", "%"+query.UserName+"%")
-	}
-	if query.Status != "" {
-		db = db.Where("status = ?", query.Status)
-	}
-
-	var total int64
-	err := db.Count(&total).Error
+	list, total, err := c.userService.GetUserList(&query)
 	if err != nil {
-		response.FailWithMessage(201, err.Error(), ctx)
-		return
-	}
-
-	var users []SystemDB.UserDO
-	err = db.Offset((query.PageNum - 1) * query.PageSize).
-		Limit(query.PageSize).
-		Order("user_id desc").
-		Find(&users).Error
-	if err != nil {
-		response.FailWithMessage(201, err.Error(), ctx)
+		response.FailWithMessage(201, "获取用户列表失败: "+err.Error(), ctx)
 		return
 	}
 
 	response.OkWithDetailed(gin.H{
+		"list":  list,
 		"total": total,
-		"list":  users,
 	}, "获取成功", ctx)
 }
 
-// GetInfo 获取用户详情
-func (c *UserController) GetInfo(ctx *gin.Context) {
-	idStr := ctx.Param("userId")
-	id, err := strconv.ParseInt(idStr, 10, 64)
-	if err != nil {
-		response.FailWithMessage(201, "无效的用户ID", ctx)
-		return
-	}
-
-	user := &SystemDB.UserDO{ID: id}
-	if err := user.First(); err != nil {
-		response.FailWithMessage(201, err.Error(), ctx)
-		return
-	}
-
-	response.OkWithDetailed(user, "获取成功", ctx)
-}
-
 // Add 新增用户
+// @Summary 新增用户
+// @Description 新增系统用户
+// @Tags 系统用户
+// @Accept json
+// @Produce json
+// @Param data body dto.CreateUserReq true "用户信息"
+// @Success 200 {object} response.Response "成功"
+// @Router /system/user [post]
 func (c *UserController) Add(ctx *gin.Context) {
-	var user SystemDB.UserDO
-	if err := ctx.ShouldBindJSON(&user); err != nil {
-		response.FailWithMessage(201, err.Error(), ctx)
+	var req dto.CreateUserReq
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		response.FailWithMessage(201, "参数错误: "+err.Error(), ctx)
 		return
 	}
 
-	// 检查用户名是否存在
-	exists, err := user.CheckUserNameExists(user.UserName, 0)
-	if err != nil {
-		response.FailWithMessage(201, err.Error(), ctx)
-		return
-	}
-	if exists {
-		response.FailWithMessage(201, "用户名已存在", ctx)
-		return
-	}
-
-	// 加密密码
-	encryptedPassword, err := utils.EncryptPassword(user.Password)
-	if err != nil {
-		response.FailWithMessage(201, "密码加密失败", ctx)
-		return
-	}
-	user.Password = encryptedPassword
-
-	user.DelFlag = "0"
-	if err := user.Create(); err != nil {
-		response.FailWithMessage(201, err.Error(), ctx)
+	// 从上下文获取创建人
+	createBy := ctx.GetString("userName")
+	if err := c.userService.CreateUser(&req, createBy); err != nil {
+		response.FailWithMessage(201, "创建用户失败: "+err.Error(), ctx)
 		return
 	}
 
@@ -120,26 +87,25 @@ func (c *UserController) Add(ctx *gin.Context) {
 }
 
 // Update 更新用户
+// @Summary 更新用户
+// @Description 更新系统用户
+// @Tags 系统用户
+// @Accept json
+// @Produce json
+// @Param data body dto.UpdateUserReq true "用户信息"
+// @Success 200 {object} response.Response "成功"
+// @Router /system/user [put]
 func (c *UserController) Update(ctx *gin.Context) {
-	var user SystemDB.UserDO
-	if err := ctx.ShouldBindJSON(&user); err != nil {
-		response.FailWithMessage(201, err.Error(), ctx)
+	var req dto.UpdateUserReq
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		response.FailWithMessage(201, "参数错误: "+err.Error(), ctx)
 		return
 	}
 
-	// 检查用户名是否存在
-	exists, err := user.CheckUserNameExists(user.UserName, user.ID)
-	if err != nil {
-		response.FailWithMessage(201, err.Error(), ctx)
-		return
-	}
-	if exists {
-		response.FailWithMessage(201, "用户名已存在", ctx)
-		return
-	}
-
-	if err := user.Update(); err != nil {
-		response.FailWithMessage(201, err.Error(), ctx)
+	// 从上下文获取更新人
+	updateBy := ctx.GetString("userName")
+	if err := c.userService.UpdateUser(&req, updateBy); err != nil {
+		response.FailWithMessage(201, "更新用户失败: "+err.Error(), ctx)
 		return
 	}
 
@@ -147,6 +113,14 @@ func (c *UserController) Update(ctx *gin.Context) {
 }
 
 // Delete 删除用户
+// @Summary 删除用户
+// @Description 删除系统用户
+// @Tags 系统用户
+// @Accept application/x-www-form-urlencoded
+// @Produce json
+// @Param userId path int true "用户ID"
+// @Success 200 {object} response.Response "成功"
+// @Router /system/user/{userId} [delete]
 func (c *UserController) Delete(ctx *gin.Context) {
 	idStr := ctx.Param("userId")
 	id, err := strconv.ParseInt(idStr, 10, 64)
@@ -155,68 +129,84 @@ func (c *UserController) Delete(ctx *gin.Context) {
 		return
 	}
 
-	user := &SystemDB.UserDO{ID: id}
-	if err := user.Delete(); err != nil {
-		response.FailWithMessage(201, err.Error(), ctx)
+	if err := c.userService.DeleteUser(id); err != nil {
+		response.FailWithMessage(201, "删除用户失败: "+err.Error(), ctx)
 		return
 	}
 
 	response.OkWithMessage("删除成功", ctx)
 }
 
-// UpdateStatus 更新用户状态
-func (c *UserController) UpdateStatus(ctx *gin.Context) {
-	var req struct {
-		UserID int64  `json:"userId"`
-		Status string `json:"status"`
-	}
-
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		response.FailWithMessage(201, err.Error(), ctx)
+// GetInfo 获取用户详情
+// @Summary 获取用户详情
+// @Description 获取系统用户详情
+// @Tags 系统用户
+// @Accept application/x-www-form-urlencoded
+// @Produce json
+// @Param userId path int true "用户ID"
+// @Success 200 {object} response.Response "成功"
+// @Router /system/user/{userId} [get]
+func (c *UserController) GetInfo(ctx *gin.Context) {
+	idStr := ctx.Param("userId")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		response.FailWithMessage(201, "无效的用户ID", ctx)
 		return
 	}
 
-	user := &SystemDB.UserDO{
-		ID:     req.UserID,
-		Status: req.Status,
-	}
-
-	if err := user.UpdateStatus(); err != nil {
-		response.FailWithMessage(201, err.Error(), ctx)
+	user, err := c.userService.GetUserInfo(id)
+	if err != nil {
+		response.FailWithMessage(201, "获取用户详情失败: "+err.Error(), ctx)
 		return
 	}
 
-	response.OkWithMessage("状态更新成功", ctx)
+	response.OkWithDetailed(user, "获取成功", ctx)
 }
 
-// ResetPassword 重置密码
-func (c *UserController) ResetPassword(ctx *gin.Context) {
-	var req struct {
-		UserID   int64  `json:"userId"`
-		Password string `json:"password"`
-	}
-
+// UpdateStatus 更新用户状态
+// @Summary 更新用户状态
+// @Description 更新系统用户状态
+// @Tags 系统用户
+// @Accept json
+// @Produce json
+// @Param data body dto.UpdateUserStatusReq true "状态信息"
+// @Success 200 {object} response.Response "成功"
+// @Router /system/user/status [put]
+func (c *UserController) UpdateStatus(ctx *gin.Context) {
+	var req dto.UpdateUserStatusReq
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		response.FailWithMessage(201, err.Error(), ctx)
+		response.FailWithMessage(201, "参数错误: "+err.Error(), ctx)
 		return
 	}
 
-	// 加密新密码
-	encryptedPassword, err := utils.EncryptPassword(req.Password)
-	if err != nil {
-		response.FailWithMessage(201, "密码加密失败", ctx)
+	if err := c.userService.UpdateUserStatus(req.UserID, req.Status); err != nil {
+		response.FailWithMessage(201, "更新用户状态失败: "+err.Error(), ctx)
 		return
 	}
 
-	user := &SystemDB.UserDO{
-		ID:       req.UserID,
-		Password: encryptedPassword,
-	}
+	response.OkWithMessage("更新成功", ctx)
+}
 
-	if err := user.UpdatePassword(); err != nil {
-		response.FailWithMessage(201, err.Error(), ctx)
+// ResetPassword 重置用户密码
+// @Summary 重置用户密码
+// @Description 重置系统用户密码
+// @Tags 系统用户
+// @Accept json
+// @Produce json
+// @Param data body dto.UpdateUserPasswordReq true "密码信息"
+// @Success 200 {object} response.Response "成功"
+// @Router /system/user/password [put]
+func (c *UserController) ResetPassword(ctx *gin.Context) {
+	var req dto.UpdateUserPasswordReq
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		response.FailWithMessage(201, "参数错误: "+err.Error(), ctx)
 		return
 	}
 
-	response.OkWithMessage("密码重置成功", ctx)
+	if err := c.userService.UpdateUserPassword(req.UserID, req.Password); err != nil {
+		response.FailWithMessage(201, "重置密码失败: "+err.Error(), ctx)
+		return
+	}
+
+	response.OkWithMessage("重置成功", ctx)
 }

@@ -13,7 +13,7 @@ func Handle(engine *gin.Engine) {
 	engine.GET("/", entry.Handle)
 
 	// 注册系统配置路由
-	configController := &system.ConfigController{}
+	configController := system.NewConfigController()
 	menuController := &system.MenuController{}
 	roleController := &system.RoleController{}
 	userController := &system.UserController{}
