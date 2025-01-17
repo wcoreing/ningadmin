@@ -1,6 +1,7 @@
 package route
 
 import (
+	"wnadmin/app/controller/auth"
 	"wnadmin/app/controller/entry"
 	"wnadmin/app/controller/system"
 	"wnadmin/app/middleware"
@@ -16,7 +17,7 @@ func Handle(engine *gin.Engine) {
 	menuController := &system.MenuController{}
 	roleController := &system.RoleController{}
 	userController := &system.UserController{}
-	loginController := &system.LoginController{}
+	loginController := auth.NewLoginController()
 
 	// 登录相关路由（无需认证）
 	engine.POST("/api/auth/login", loginController.Login)
