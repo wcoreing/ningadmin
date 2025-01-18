@@ -32,3 +32,15 @@ type MenuStatusDTO struct {
 	ID     int64  `json:"id" binding:"required"`
 	Status string `json:"status" binding:"required"`
 }
+
+// MenuTree 菜单树结构
+type MenuTree struct {
+	ID        int64      `json:"id"`        // 菜单ID
+	ParentID  int64      `json:"parentId"`  // 父菜单ID
+	Name      string     `json:"name"`      // 菜单名称
+	Path      string     `json:"path"`      // 路由路径
+	Component string     `json:"component"` // 组件路径
+	Icon      string     `json:"icon"`      // 图标
+	Sort      int        `json:"sort"`      // 排序
+	Children  []MenuTree `json:"children"`  // 子菜单
+}

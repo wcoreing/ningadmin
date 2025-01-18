@@ -2,6 +2,7 @@ package SystemDB
 
 import (
 	"time"
+	"wnadmin/app/model/dto"
 	"wnadmin/app/provider/db"
 
 	"gorm.io/gorm"
@@ -47,7 +48,15 @@ func (u *UserDO) Update() error {
 
 // Delete 删除记录
 func (u *UserDO) Delete() error {
-	return u.Query().Update("del_flag", "2").Error
+	return db.DB.WnAdmin.Transaction(func(tx *gorm.DB) error {
+		// 删除用户角色关联
+		if err := tx.Table("sys_user_role").Where("user_id = ?", u.ID).Delete(nil).Error; err != nil {
+			return err
+		}
+
+		// 软删除用户
+		return tx.Model(u).Where("user_id = ?", u.ID).Update("del_flag", "2").Error
+	})
 }
 
 // First 获取第一条记录
@@ -79,4 +88,77 @@ func (u *UserDO) UpdateStatus() error {
 // UpdatePassword 更新用户密码
 func (u *UserDO) UpdatePassword() error {
 	return u.Query().Where("user_id = ?", u.ID).Update("password", u.Password).Error
+}
+
+// GetUserRoles 获取用户关联的角色ID列表
+func (u *UserDO) GetUserRoles() ([]int64, error) {
+	var roleIDs []int64
+	err := db.DB.WnAdmin.Table("sys_user_role").
+		Where("user_id = ?", u.ID).
+		Pluck("role_id", &roleIDs).Error
+	return roleIDs, err
+}
+
+// UpdateUserRoles 更新用户关联的角色
+func (u *UserDO) UpdateUserRoles(roleIDs []int64) error {
+	return db.DB.WnAdmin.Transaction(func(tx *gorm.DB) error {
+		// 删除原有角色关联
+		if err := tx.Table("sys_user_role").Where("user_id = ?", u.ID).Delete(nil).Error; err != nil {
+			return err
+		}
+
+		// 添加新角色关联
+		if len(roleIDs) > 0 {
+			userRoles := make([]map[string]interface{}, len(roleIDs))
+			for i, rid := range roleIDs {
+				userRoles[i] = map[string]interface{}{
+					"user_id": u.ID,
+					"role_id": rid,
+				}
+			}
+			return tx.Table("sys_user_role").Create(userRoles).Error
+		}
+		return nil
+	})
+}
+
+// GetUserRolesWithName 获取用户角色（包含角色名称）
+func (u *UserDO) GetUserRolesWithName() ([]int64, error) {
+	var roleIDs []int64
+	err := db.DB.WnAdmin.Table("sys_user_role").
+		Select("sys_role.role_id").
+		Joins("LEFT JOIN sys_role ON sys_user_role.role_id = sys_role.role_id").
+		Where("sys_user_role.user_id = ? AND sys_role.del_flag = ?", u.ID, "0").
+		Pluck("sys_role.role_id", &roleIDs).Error
+	return roleIDs, err
+}
+
+// GetUserRole 获取用户角色信息
+func (u *UserDO) GetUserRole() (*dto.RoleInfo, error) {
+	var role dto.RoleInfo
+	err := db.DB.WnAdmin.Table("sys_user_role").
+		Select("sys_role.role_id, sys_role.role_name, sys_role.role_key, sys_role.status").
+		Joins("LEFT JOIN sys_role ON sys_user_role.role_id = sys_role.role_id").
+		Where("sys_user_role.user_id = ? AND sys_role.del_flag = ?", u.ID, "0").
+		First(&role).Error
+	if err != nil {
+		return nil, err
+	}
+	return &role, nil
+}
+
+// UpdateUserRole 更新用户角色
+func (u *UserDO) UpdateUserRole(roleID int64) error {
+	return db.DB.WnAdmin.Transaction(func(tx *gorm.DB) error {
+		// 删除原有角色关联
+		if err := tx.Table("sys_user_role").Where("user_id = ?", u.ID).Delete(nil).Error; err != nil {
+			return err
+		}
+
+		// 添加新角色关联
+		return tx.Table("sys_user_role").Create(map[string]interface{}{
+			"user_id": u.ID,
+			"role_id": roleID,
+		}).Error
+	})
 }

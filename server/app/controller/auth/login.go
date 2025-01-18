@@ -1,10 +1,11 @@
 package auth
 
 import (
-	"github.com/gin-gonic/gin"
 	"wnadmin/app/common/response"
 	"wnadmin/app/model/dto"
 	"wnadmin/app/service/auth"
+
+	"github.com/gin-gonic/gin"
 )
 
 type LoginController struct {
@@ -14,7 +15,7 @@ type LoginController struct {
 // NewLoginController 创建登录控制器
 func NewLoginController() *LoginController {
 	return &LoginController{
-		authService: &auth.AuthService{},
+		authService: auth.NewAuthService(),
 	}
 }
 
@@ -52,7 +53,20 @@ func (c *LoginController) GetUserInfo(ctx *gin.Context) {
 		return
 	}
 
-	response.OkWithDetailed(userInfo, "获取成功", ctx)
+	// 获取用户角色的权限菜单树
+	menuTree, err := c.authService.GetUserMenuTree(userID.(int64))
+	if err != nil {
+		response.FailWithMessage(201, "获取权限菜单失败: "+err.Error(), ctx)
+		return
+	}
+
+	// 构造返回数据
+	data := gin.H{
+		"user": userInfo,
+		"menu": menuTree,
+	}
+
+	response.OkWithDetailed(data, "获取成功", ctx)
 }
 
 // Logout 用户登出

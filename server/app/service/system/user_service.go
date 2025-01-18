@@ -5,13 +5,16 @@ import (
 	"wnadmin/app/common/utils"
 	"wnadmin/app/model/do/SystemDB"
 	"wnadmin/app/model/dto"
+	"wnadmin/app/provider/db"
+
+	"gorm.io/gorm"
 )
 
 // UserService 用户服务
 type UserService struct{}
 
 // GetUserList 获取用户列表
-func (s *UserService) GetUserList(query *dto.UserQuery) ([]SystemDB.UserDO, int64, error) {
+func (s *UserService) GetUserList(query *dto.UserQuery) (*dto.UserListResp, error) {
 	var users []SystemDB.UserDO
 	userDO := &SystemDB.UserDO{}
 	db := userDO.Query()
@@ -23,13 +26,48 @@ func (s *UserService) GetUserList(query *dto.UserQuery) ([]SystemDB.UserDO, int6
 		db = db.Where("status = ?", query.Status)
 	}
 
+	// 查询总数
 	var total int64
-	db.Count(&total)
+	if err := db.Count(&total).Error; err != nil {
+		return nil, err
+	}
 
+	// 分页查询
 	offset := (query.PageNum - 1) * query.PageSize
-	err := db.Offset(offset).Limit(query.PageSize).Order("user_id desc").Find(&users).Error
+	if err := db.Offset(offset).Limit(query.PageSize).Order("create_time DESC").Find(&users).Error; err != nil {
+		return nil, err
+	}
 
-	return users, total, err
+	// 构建响应数据
+	resp := &dto.UserListResp{
+		Total: total,
+		Rows:  make([]dto.UserInfoResp, 0, len(users)),
+	}
+
+	// 获取用户角色
+	for _, user := range users {
+		role, err := user.GetUserRole()
+		if err != nil {
+			return nil, err
+		}
+
+		resp.Rows = append(resp.Rows, dto.UserInfoResp{
+			ID:          user.ID,
+			UserName:    user.UserName,
+			NickName:    user.NickName,
+			Email:       user.Email,
+			Phonenumber: user.Phonenumber,
+			Sex:         user.Sex,
+			Status:      user.Status,
+			CreateTime:  user.CreateTime.Format("2006-01-02 15:04:05"),
+			CreateBy:    user.CreateBy,
+			UpdateTime:  user.UpdateTime.Format("2006-01-02 15:04:05"),
+			UpdateBy:    user.UpdateBy,
+			Role:        role,
+		})
+	}
+
+	return resp, nil
 }
 
 // CreateUser 创建用户
@@ -73,15 +111,28 @@ func (s *UserService) CreateUser(req *dto.CreateUserReq, createBy string) error 
 		user.Sex = "0"
 	}
 
-	return user.Create()
+	// 开启事务
+	return db.DB.WnAdmin.Transaction(func(tx *gorm.DB) error {
+		// 创建用户
+		if err := user.Create(); err != nil {
+			return err
+		}
+
+		// 分配角色
+		if err := user.UpdateUserRole(req.RoleID); err != nil {
+			return err
+		}
+
+		return nil
+	})
 }
 
 // UpdateUser 更新用户
 func (s *UserService) UpdateUser(req *dto.UpdateUserReq, updateBy string) error {
-	user := &SystemDB.UserDO{}
-	err := user.Query().Where("user_id = ?", req.ID).First(user).Error
-	if err != nil {
-		return err
+	// 检查用户是否存在
+	user := &SystemDB.UserDO{ID: req.ID}
+	if err := user.First(); err != nil {
+		return ErrUserNotFound
 	}
 
 	// 检查用户名是否已存在（排除自身）
@@ -95,6 +146,7 @@ func (s *UserService) UpdateUser(req *dto.UpdateUserReq, updateBy string) error 
 		}
 	}
 
+	// 更新用户信息
 	user.UserName = req.UserName
 	user.NickName = req.NickName
 	user.Email = req.Email
@@ -104,7 +156,20 @@ func (s *UserService) UpdateUser(req *dto.UpdateUserReq, updateBy string) error 
 	user.UpdateBy = updateBy
 	user.UpdateTime = time.Now()
 
-	return user.Update()
+	// 开启事务
+	return db.DB.WnAdmin.Transaction(func(tx *gorm.DB) error {
+		// 更新用户信息
+		if err := user.Update(); err != nil {
+			return err
+		}
+
+		// 更新角色
+		if err := user.UpdateUserRole(req.RoleID); err != nil {
+			return err
+		}
+
+		return nil
+	})
 }
 
 // DeleteUser 删除用户
@@ -114,10 +179,32 @@ func (s *UserService) DeleteUser(id int64) error {
 }
 
 // GetUserInfo 获取用户详情
-func (s *UserService) GetUserInfo(id int64) (*SystemDB.UserDO, error) {
+func (s *UserService) GetUserInfo(id int64) (*dto.UserInfoResp, error) {
 	user := &SystemDB.UserDO{ID: id}
-	err := user.First()
-	return user, err
+	if err := user.First(); err != nil {
+		return nil, ErrUserNotFound
+	}
+
+	// 获取用户角色
+	role, err := user.GetUserRole()
+	if err != nil {
+		return nil, err
+	}
+
+	return &dto.UserInfoResp{
+		ID:          user.ID,
+		UserName:    user.UserName,
+		NickName:    user.NickName,
+		Email:       user.Email,
+		Phonenumber: user.Phonenumber,
+		Sex:         user.Sex,
+		Status:      user.Status,
+		CreateTime:  user.CreateTime.Format("2006-01-02 15:04:05"),
+		CreateBy:    user.CreateBy,
+		UpdateTime:  user.UpdateTime.Format("2006-01-02 15:04:05"),
+		UpdateBy:    user.UpdateBy,
+		Role:        role,
+	}, nil
 }
 
 // UpdateUserStatus 更新用户状态

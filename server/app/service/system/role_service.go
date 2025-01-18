@@ -17,7 +17,7 @@ func (s *RoleService) GetRoleList(query *dto.RoleQuery) (*dto.RoleListResp, erro
 
 	// 构建查询条件
 	if query.RoleName != "" {
-		db = db.Where("role_name LIKE ?", "%"+query.RoleName+"%")
+		db = db.Where("role_name LIKE CONCAT('%', ?, '%')", query.RoleName)
 	}
 	if query.RoleKey != "" {
 		db = db.Where("role_key = ?", query.RoleKey)
@@ -91,11 +91,14 @@ func (s *RoleService) CreateRole(req *dto.CreateRoleReq, createBy string) error 
 		return ErrRoleKeyExists
 	}
 	// 创建角色
+	now := time.Now()
 	role := &SystemDB.RoleDO{}
 	role.RoleName = req.RoleName
 	role.RoleKey = req.RoleKey
 	role.Status = req.Status
 	role.CreateBy = createBy
+	role.CreateTime = now
+	role.UpdateTime = now
 	role.DelFlag = "0"
 
 	// 设置默认状态

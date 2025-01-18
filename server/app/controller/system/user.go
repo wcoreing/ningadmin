@@ -48,15 +48,15 @@ func (c *UserController) List(ctx *gin.Context) {
 		query.PageSize = 10
 	}
 
-	list, total, err := c.userService.GetUserList(&query)
+	result, err := c.userService.GetUserList(&query)
 	if err != nil {
 		response.FailWithMessage(201, "获取用户列表失败: "+err.Error(), ctx)
 		return
 	}
 
 	response.OkWithDetailed(gin.H{
-		"list":  list,
-		"total": total,
+		"total": result.Total,
+		"list":  result.Rows,
 	}, "获取成功", ctx)
 }
 

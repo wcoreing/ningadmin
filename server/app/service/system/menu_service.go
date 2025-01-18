@@ -4,6 +4,7 @@ import (
 	"strings"
 	"wnadmin/app/model/do/SystemDB"
 	"wnadmin/app/model/dto"
+	"wnadmin/app/provider/db"
 )
 
 type MenuService struct{}
@@ -201,4 +202,43 @@ func contains(slice []int64, val int64) bool {
 		}
 	}
 	return false
+}
+
+// GetRoleMenuTree 获取角色的菜单树
+func (s *MenuService) GetRoleMenuTree(roleID int64) ([]dto.MenuTree, error) {
+	// 获取角色的权限菜单
+	var menus []SystemDB.MenuDO
+	err := db.DB.WnAdmin.Table("sys_permission").
+		Joins("LEFT JOIN sys_role_permission ON sys_permission.permission_id = sys_role_permission.permission_id").
+		Where("sys_role_permission.role_id = ? AND sys_permission.del_flag = ? AND sys_permission.status = ?",
+			roleID, "0", "0").
+		Order("sys_permission.sort").
+		Find(&menus).Error
+	if err != nil {
+		return nil, err
+	}
+
+	// 构建菜单树
+	return buildRoleMenuTree(menus, 0), nil
+}
+
+// buildRoleMenuTree 构建角色菜单树
+func buildRoleMenuTree(menus []SystemDB.MenuDO, parentID int64) []dto.MenuTree {
+	var trees []dto.MenuTree
+	for _, menu := range menus {
+		if menu.ParentID == parentID {
+			tree := dto.MenuTree{
+				ID:        menu.ID,
+				ParentID:  menu.ParentID,
+				Name:      menu.Name,
+				Path:      menu.RoutePath,
+				Component: menu.ComponentPath,
+				Icon:      menu.Icon,
+				Sort:      menu.Sort,
+				Children:  buildRoleMenuTree(menus, menu.ID),
+			}
+			trees = append(trees, tree)
+		}
+	}
+	return trees
 }
