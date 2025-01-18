@@ -4,6 +4,8 @@ import (
 	"strconv"
 	"wnadmin/app/common/response"
 	"wnadmin/app/model/do/SystemDB"
+	"wnadmin/app/model/dto"
+	"wnadmin/app/service/system"
 
 	"github.com/gin-gonic/gin"
 )
@@ -12,18 +14,13 @@ type RoleController struct{}
 
 // List 获取角色列表
 func (c *RoleController) List(ctx *gin.Context) {
-	var query struct {
-		PageNum  int    `form:"pageNum"`
-		PageSize int    `form:"pageSize"`
-		RoleName string `form:"roleName"`
-		Status   string `form:"status"`
-	}
-
+	var query dto.RoleQuery
 	if err := ctx.ShouldBindQuery(&query); err != nil {
 		response.FailWithMessage(201, err.Error(), ctx)
 		return
 	}
 
+	// 参数校验
 	if query.PageNum < 1 {
 		query.PageNum = 1
 	}
@@ -31,36 +28,17 @@ func (c *RoleController) List(ctx *gin.Context) {
 		query.PageSize = 10
 	}
 
-	roleDO := &SystemDB.RoleDO{}
-	db := roleDO.Query().Where("del_flag = ?", "0")
-
-	if query.RoleName != "" {
-		db = db.Where("role_name LIKE ?", "%"+query.RoleName+"%")
-	}
-	if query.Status != "" {
-		db = db.Where("status = ?", query.Status)
-	}
-
-	var total int64
-	err := db.Count(&total).Error
-	if err != nil {
-		response.FailWithMessage(201, err.Error(), ctx)
-		return
-	}
-
-	var roles []SystemDB.RoleDO
-	err = db.Offset((query.PageNum - 1) * query.PageSize).
-		Limit(query.PageSize).
-		Order("role_id desc").
-		Find(&roles).Error
+	// 调用service层获取数据
+	roleService := system.RoleService{}
+	result, err := roleService.GetRoleList(&query)
 	if err != nil {
 		response.FailWithMessage(201, err.Error(), ctx)
 		return
 	}
 
 	response.OkWithDetailed(gin.H{
-		"total": total,
-		"list":  roles,
+		"total": result.Total,
+		"list":  result.Rows,
 	}, "获取成功", ctx)
 }
 
@@ -73,8 +51,9 @@ func (c *RoleController) GetInfo(ctx *gin.Context) {
 		return
 	}
 
-	role := &SystemDB.RoleDO{ID: id}
-	if err := role.First(); err != nil {
+	roleService := system.RoleService{}
+	role, err := roleService.GetRoleInfo(id)
+	if err != nil {
 		response.FailWithMessage(201, err.Error(), ctx)
 		return
 	}
@@ -84,25 +63,14 @@ func (c *RoleController) GetInfo(ctx *gin.Context) {
 
 // Add 新增角色
 func (c *RoleController) Add(ctx *gin.Context) {
-	var role SystemDB.RoleDO
-	if err := ctx.ShouldBindJSON(&role); err != nil {
+	var req dto.CreateRoleReq
+	if err := ctx.ShouldBindJSON(&req); err != nil {
 		response.FailWithMessage(201, err.Error(), ctx)
 		return
 	}
-
-	// 检查角色标识是否存在
-	exists, err := role.CheckRoleKeyExists(role.RoleKey, 0)
-	if err != nil {
-		response.FailWithMessage(201, err.Error(), ctx)
-		return
-	}
-	if exists {
-		response.FailWithMessage(201, "角色标识已存在", ctx)
-		return
-	}
-
-	role.DelFlag = "0"
-	if err := role.Create(); err != nil {
+	// 调用service层创建角色
+	roleService := system.RoleService{}
+	if err := roleService.CreateRole(&req, "admin"); err != nil {
 		response.FailWithMessage(201, err.Error(), ctx)
 		return
 	}
@@ -112,24 +80,15 @@ func (c *RoleController) Add(ctx *gin.Context) {
 
 // Update 更新角色
 func (c *RoleController) Update(ctx *gin.Context) {
-	var role SystemDB.RoleDO
-	if err := ctx.ShouldBindJSON(&role); err != nil {
+	var req dto.UpdateRoleReq
+	if err := ctx.ShouldBindJSON(&req); err != nil {
 		response.FailWithMessage(201, err.Error(), ctx)
 		return
 	}
 
-	// 检查角色标识是否存在
-	exists, err := role.CheckRoleKeyExists(role.RoleKey, role.ID)
-	if err != nil {
-		response.FailWithMessage(201, err.Error(), ctx)
-		return
-	}
-	if exists {
-		response.FailWithMessage(201, "角色标识已存在", ctx)
-		return
-	}
-
-	if err := role.Update(); err != nil {
+	// 调用service层更新数据
+	roleService := system.RoleService{}
+	if err := roleService.UpdateRole(&req, "admin"); err != nil {
 		response.FailWithMessage(201, err.Error(), ctx)
 		return
 	}
@@ -146,7 +105,7 @@ func (c *RoleController) Delete(ctx *gin.Context) {
 		return
 	}
 
-	role := &SystemDB.RoleDO{ID: id}
+	role := &SystemDB.RoleDO{RoleID: id}
 	if err := role.Delete(); err != nil {
 		response.FailWithMessage(201, err.Error(), ctx)
 		return
@@ -168,7 +127,7 @@ func (c *RoleController) UpdateStatus(ctx *gin.Context) {
 	}
 
 	role := &SystemDB.RoleDO{
-		ID:     req.RoleID,
+		RoleID: req.RoleID,
 		Status: req.Status,
 	}
 
@@ -189,44 +148,14 @@ func (c *RoleController) GetRolePermissions(ctx *gin.Context) {
 		return
 	}
 
-	// 1. 获取所有菜单权限
-	menuDO := &SystemDB.MenuDO{}
-	var allMenus []SystemDB.MenuDO
-	err = menuDO.Query().Where("del_flag = ?", "0").Order("sort").Find(&allMenus).Error
+	roleService := system.RoleService{}
+	permissions, err := roleService.GetRolePermissionsTree(id)
 	if err != nil {
 		response.FailWithMessage(201, err.Error(), ctx)
 		return
 	}
 
-	// 2. 获取角色已分配的权限ID列表
-	role := &SystemDB.RoleDO{ID: id}
-	permissionIDs, err := role.GetRolePermissions()
-	if err != nil {
-		response.FailWithMessage(201, err.Error(), ctx)
-		return
-	}
-
-	// 3. 构建树形结构并标记选中状态
-	var result []map[string]interface{}
-	for _, menu := range allMenus {
-		if menu.ParentID == 0 {
-			node := convertMenuToMap(menu)
-			// 检查是否在已分配的权限列表中
-			for _, pid := range permissionIDs {
-				if menu.ID == pid {
-					node["isChecked"] = true
-					break
-				}
-			}
-			children := buildPermissionTree(allMenus, menu.ID, permissionIDs)
-			if len(children) > 0 {
-				node["children"] = children
-			}
-			result = append(result, node)
-		}
-	}
-
-	response.OkWithDetailed(result, "获取成功", ctx)
+	response.OkWithDetailed(permissions, "获取成功", ctx)
 }
 
 // UpdateRolePermissions 更新角色权限
@@ -241,56 +170,11 @@ func (c *RoleController) UpdateRolePermissions(ctx *gin.Context) {
 		return
 	}
 
-	role := &SystemDB.RoleDO{ID: req.RoleID}
+	role := &SystemDB.RoleDO{RoleID: req.RoleID}
 	if err := role.UpdateRolePermissions(req.PermissionIDs); err != nil {
 		response.FailWithMessage(201, err.Error(), ctx)
 		return
 	}
 
 	response.OkWithMessage("权限更新成功", ctx)
-}
-
-// convertMenuToMap 将菜单对象转换为map
-func convertMenuToMap(menu SystemDB.MenuDO) map[string]interface{} {
-	return map[string]interface{}{
-		"id":            menu.ID,
-		"parentId":      menu.ParentID,
-		"type":          menu.Type,
-		"name":          menu.Name,
-		"icon":          menu.Icon,
-		"routePath":     menu.RoutePath,
-		"componentPath": menu.ComponentPath,
-		"permission":    menu.Permission,
-		"sort":          menu.Sort,
-		"status":        menu.Status,
-		"createTime":    menu.CreateTime,
-		"createBy":      menu.CreateBy,
-		"updateTime":    menu.UpdateTime,
-		"updateBy":      menu.UpdateBy,
-		"isChecked":     false,
-		"isExpand":      false,
-	}
-}
-
-// buildPermissionTree 构建权限树
-func buildPermissionTree(menus []SystemDB.MenuDO, parentID int64, checkedIds []int64) []map[string]interface{} {
-	var nodes []map[string]interface{}
-	for _, menu := range menus {
-		if menu.ParentID == parentID {
-			node := convertMenuToMap(menu)
-			// 检查是否在已分配的权限列表中
-			for _, pid := range checkedIds {
-				if menu.ID == pid {
-					node["isChecked"] = true
-					break
-				}
-			}
-			children := buildPermissionTree(menus, menu.ID, checkedIds)
-			if len(children) > 0 {
-				node["children"] = children
-			}
-			nodes = append(nodes, node)
-		}
-	}
-	return nodes
 }

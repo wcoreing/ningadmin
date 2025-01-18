@@ -9,7 +9,7 @@ import (
 
 // RoleDO 角色信息
 type RoleDO struct {
-	ID         int64     `json:"roleId" gorm:"column:role_id;primaryKey;comment:角色ID"`
+	RoleID     int64     `json:"roleId" gorm:"column:role_id;primaryKey;autoIncrement;comment:角色ID"`
 	RoleName   string    `json:"roleName" gorm:"column:role_name;comment:角色名称"`
 	RoleKey    string    `json:"roleKey" gorm:"column:role_key;comment:角色标识"`
 	Status     string    `json:"status" gorm:"comment:角色状态（0正常 1停用）"`
@@ -18,6 +18,17 @@ type RoleDO struct {
 	CreateBy   string    `json:"createBy" gorm:"column:create_by;comment:创建者"`
 	UpdateTime time.Time `json:"updateTime" gorm:"column:update_time;autoUpdateTime;comment:更新时间"`
 	UpdateBy   string    `json:"updateBy" gorm:"column:update_by;comment:更新者"`
+}
+
+// UserRoleDO 用户角色关联
+type UserRoleDO struct {
+	UserID int64 `gorm:"column:user_id;primaryKey;comment:用户ID"`
+	RoleID int64 `gorm:"column:role_id;primaryKey;comment:角色ID"`
+}
+
+// TableName 表名
+func (UserRoleDO) TableName() string {
+	return "sys_user_role"
 }
 
 // TableName 表名
@@ -37,25 +48,25 @@ func (r *RoleDO) Create() error {
 
 // Update 更新记录
 func (r *RoleDO) Update() error {
-	return r.Query().Updates(r).Error
+	return r.Query().Where("role_id = ?", r.RoleID).Updates(r).Error
 }
 
 // Delete 删除记录
 func (r *RoleDO) Delete() error {
 	return db.DB.WnAdmin.Transaction(func(tx *gorm.DB) error {
 		// 删除角色权限关联
-		if err := tx.Table("sys_role_permission").Where("role_id = ?", r.ID).Delete(nil).Error; err != nil {
+		if err := tx.Table("sys_role_permission").Where("role_id = ?", r.RoleID).Delete(nil).Error; err != nil {
 			return err
 		}
 
 		// 软删除角色
-		return tx.Model(r).Update("del_flag", "2").Error
+		return tx.Model(r).Where("role_id = ?", r.RoleID).Update("del_flag", "2").Error
 	})
 }
 
 // First 获取第一条记录
 func (r *RoleDO) First() error {
-	return r.Query().First(r).Error
+	return r.Query().Where("role_id = ?", r.RoleID).First(r).Error
 }
 
 // Find 查询多条记录
@@ -76,14 +87,21 @@ func (r *RoleDO) CheckRoleKeyExists(roleKey string, excludeID int64) (bool, erro
 
 // UpdateStatus 更新角色状态
 func (r *RoleDO) UpdateStatus() error {
-	return r.Query().Where("role_id = ?", r.ID).Update("status", r.Status).Error
+	return r.Query().Where("role_id = ?", r.RoleID).Update("status", r.Status).Error
+}
+
+// HasUsers 检查角色是否已分配用户
+func (r *RoleDO) HasUsers() (bool, error) {
+	var count int64
+	err := db.DB.WnAdmin.Model(&UserRoleDO{}).Where("role_id = ?", r.RoleID).Count(&count).Error
+	return count > 0, err
 }
 
 // GetRolePermissions 获取角色权限ID列表
 func (r *RoleDO) GetRolePermissions() ([]int64, error) {
 	var permissionIDs []int64
 	err := db.DB.WnAdmin.Table("sys_role_permission").
-		Where("role_id = ?", r.ID).
+		Where("role_id = ?", r.RoleID).
 		Pluck("permission_id", &permissionIDs).Error
 	return permissionIDs, err
 }
@@ -92,7 +110,7 @@ func (r *RoleDO) GetRolePermissions() ([]int64, error) {
 func (r *RoleDO) UpdateRolePermissions(permissionIDs []int64) error {
 	return db.DB.WnAdmin.Transaction(func(tx *gorm.DB) error {
 		// 删除原有权限
-		if err := tx.Table("sys_role_permission").Where("role_id = ?", r.ID).Delete(nil).Error; err != nil {
+		if err := tx.Table("sys_role_permission").Where("role_id = ?", r.RoleID).Delete(nil).Error; err != nil {
 			return err
 		}
 
@@ -101,7 +119,7 @@ func (r *RoleDO) UpdateRolePermissions(permissionIDs []int64) error {
 			rolePermissions := make([]map[string]interface{}, len(permissionIDs))
 			for i, pid := range permissionIDs {
 				rolePermissions[i] = map[string]interface{}{
-					"role_id":       r.ID,
+					"role_id":       r.RoleID,
 					"permission_id": pid,
 				}
 			}
