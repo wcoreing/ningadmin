@@ -77,6 +77,7 @@ func (s *ConfigService) UpdateConfig(req *dto.UpdateConfigReq, updateBy string) 
 	}
 
 	config.ModuleKey = req.ModuleKey
+	config.ModuleName = req.ModuleName
 	config.ConfigName = req.ConfigName
 	config.ConfigKey = req.ConfigKey
 	config.ConfigType = req.ConfigType

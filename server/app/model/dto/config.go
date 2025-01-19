@@ -12,6 +12,7 @@ type ConfigQuery struct {
 // CreateConfigReq 创建配置请求
 type CreateConfigReq struct {
 	ModuleKey   string `json:"moduleKey" binding:"required"`
+	ModuleName  string `json:"moduleName" binding:"required"`
 	ConfigName  string `json:"configName" binding:"required"`
 	ConfigKey   string `json:"configKey" binding:"required"`
 	ConfigType  string `json:"configType" binding:"required"`
@@ -24,6 +25,7 @@ type CreateConfigReq struct {
 type UpdateConfigReq struct {
 	ID          int64  `json:"id" binding:"required"`
 	ModuleKey   string `json:"moduleKey" binding:"required"`
+	ModuleName  string `json:"moduleName" binding:"required"`
 	ConfigName  string `json:"configName" binding:"required"`
 	ConfigKey   string `json:"configKey" binding:"required"`
 	ConfigType  string `json:"configType" binding:"required"`

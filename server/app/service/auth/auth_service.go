@@ -73,6 +73,18 @@ func (s *AuthService) GetUserInfo(userID int64) (*dto.UserInfo, error) {
 	}
 
 	// 构建用户信息
+	// 获取用户角色信息
+	role, err := user.GetUserRole()
+	if err != nil {
+		return nil, err
+	}
+
+	// 查询完整的角色信息
+	roleInfo := &SystemDB.RoleDO{RoleID: role.RoleID}
+	if err := roleInfo.First(); err != nil {
+		return nil, err
+	}
+
 	userInfo := &dto.UserInfo{
 		UserID:      user.ID,
 		UserName:    user.UserName,
@@ -83,6 +95,12 @@ func (s *AuthService) GetUserInfo(userID int64) (*dto.UserInfo, error) {
 		Avatar:      user.Avatar,
 		Status:      user.Status,
 		CreateTime:  user.CreateTime.Format("2006-01-02 15:04:05"),
+		Role: &dto.RoleInfo{
+			RoleID:   roleInfo.RoleID,
+			RoleName: roleInfo.RoleName,
+			RoleKey:  roleInfo.RoleKey,
+			Status:   roleInfo.Status,
+		},
 	}
 
 	return userInfo, nil

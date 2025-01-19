@@ -11,6 +11,7 @@ import (
 type ConfigDO struct {
 	ID          int64     `gorm:"column:id;primaryKey;autoIncrement" json:"id"`           // 配置ID
 	ModuleKey   string    `gorm:"column:module_key;size:100;not null" json:"moduleKey"`   // 模块标识
+	ModuleName  string    `gorm:"column:module_name;size:100;not null" json:"moduleName"` // 模块标识
 	ConfigName  string    `gorm:"column:config_name;size:100;not null" json:"configName"` // 配置名称
 	ConfigKey   string    `gorm:"column:config_key;size:100;not null" json:"configKey"`   // 配置键名
 	ConfigType  string    `gorm:"column:config_type;size:10;not null" json:"configType"`  // 配置类型
