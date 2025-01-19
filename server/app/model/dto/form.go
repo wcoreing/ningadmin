@@ -12,17 +12,21 @@ type FormTemplateQuery struct {
 	PageSize int    `form:"pageSize"` // 每页条数
 }
 
-// FormTemplateDTO 表单模板DTO
+// FormTemplateDTO 表单模板数据传输对象
 type FormTemplateDTO struct {
-	ID          int64           `json:"id"`          // 模板ID
-	Name        string          `json:"name"`        // 模板名称
-	Description string          `json:"description"` // 模板描述
-	FormItems   json.RawMessage `json:"formItems"`   // 表单项配置
-	Config      json.RawMessage `json:"config"`      // 表单配置
-	CreateTime  time.Time       `json:"createTime"`  // 创建时间
-	UpdateTime  *time.Time      `json:"updateTime"`  // 更新时间
-	CreateBy    string          `json:"createBy"`    // 创建者
-	UpdateBy    string          `json:"updateBy"`    // 更新者
+	ID             int64           `json:"id"`
+	Name           string          `json:"name" binding:"required"`
+	Description    string          `json:"description"`
+	SubmitURL      string          `json:"submit_url" binding:"required"`
+	SubmitMethod   string          `json:"submit_method" binding:"required"`
+	SuccessMessage string          `json:"success_message"`
+	FailMessage    string          `json:"fail_message"`
+	FormItems      json.RawMessage `json:"form_items"`
+	Config         json.RawMessage `json:"config"`
+	CreateTime     *time.Time      `json:"createTime"` // 创建时间
+	UpdateTime     *time.Time      `json:"updateTime"` // 更新时间
+	CreateBy       string          `json:"createBy"`   // 创建者
+	UpdateBy       string          `json:"updateBy"`   // 更新者
 }
 
 // FormShareCreateDTO 创建表单分享DTO

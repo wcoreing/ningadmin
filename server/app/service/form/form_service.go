@@ -1,7 +1,9 @@
 package form
 
 import (
+	"encoding/json"
 	"errors"
+	"strconv"
 	"time"
 	"wnadmin/app/common/utils"
 	"wnadmin/app/model/do/form"
@@ -47,13 +49,48 @@ func (s *FormService) GetTemplateList(query *dto.FormTemplateQuery) ([]form.Form
 }
 
 // SaveTemplate 保存表单模板
-func (s *FormService) SaveTemplate(template *form.FormTemplate) error {
-	if template.ID > 0 {
-		template.UpdateTime = utils.Ptr(time.Now())
-		return s.db.Save(template).Error
+func (s *FormService) SaveTemplate(template *form.FormTemplate, username string) (*form.FormTemplate, error) {
+	if template.ID == 0 {
+		now := time.Now()
+		template.CreateTime = now
+		template.UpdateTime = utils.Ptr(now)
+		template.Status = "0"
+		template.DelFlag = "0"
+		template.CreateBy = username
+		err := s.db.Create(template).Error
+		if err != nil {
+			return nil, errors.New("创建表单模板失败: " + err.Error())
+		}
+		return template, nil
 	}
-	template.CreateTime = time.Now()
-	return s.db.Create(template).Error
+
+	// 更新时只更新需要更新的字段
+	now := time.Now()
+	updates := map[string]interface{}{
+		"name":            template.Name,
+		"description":     template.Description,
+		"submit_url":      template.SubmitURL,
+		"submit_method":   template.SubmitMethod,
+		"success_message": template.SuccessMessage,
+		"fail_message":    template.FailMessage,
+		"form_items":      template.FormItems,
+		"config":          template.Config,
+		"update_time":     now,
+		"update_by":       username,
+	}
+
+	err := s.db.Model(template).Updates(updates).Error
+	if err != nil {
+		return nil, errors.New("更新表单模板失败: " + err.Error())
+	}
+
+	// 重新查询完整数据
+	err = s.db.First(template, template.ID).Error
+	if err != nil {
+		return nil, errors.New("获取更新后的表单模板失败: " + err.Error())
+	}
+
+	return template, nil
 }
 
 // DeleteTemplate 删除表单模板
@@ -132,4 +169,45 @@ func (s *FormService) GetSubmissionList(query *dto.FormSubmissionQuery) ([]form.
 	}
 
 	return submissions, total, nil
+}
+
+// SaveTemplateFromRequest 从请求数据保存表单模板
+func (s *FormService) SaveTemplateFromRequest(reqData map[string]interface{}, username string) (*form.FormTemplate, error) {
+	template := &form.FormTemplate{
+		Name:           reqData["name"].(string),
+		Description:    reqData["description"].(string),
+		SubmitURL:      reqData["submitUrl"].(string),
+		SubmitMethod:   reqData["submitMethod"].(string),
+		SuccessMessage: reqData["successMessage"].(string),
+		FailMessage:    reqData["failMessage"].(string),
+		Status:         "0",
+		DelFlag:        "0",
+	}
+
+	// 处理ID
+	if idStr, ok := reqData["id"].(string); ok && idStr != "" {
+		if id, err := strconv.ParseInt(idStr, 10, 64); err == nil {
+			template.ID = id
+		}
+	}
+
+	// 处理JSON字段
+	if formItems, ok := reqData["formItems"]; ok {
+		formItemsBytes, _ := json.Marshal(formItems)
+		template.FormItems = formItemsBytes
+	}
+	if config, ok := reqData["config"]; ok {
+		configBytes, _ := json.Marshal(config)
+		template.Config = configBytes
+	}
+
+	// 设置创建者/更新者
+	if template.ID > 0 {
+		template.UpdateBy = username
+	} else {
+		template.CreateBy = username
+	}
+
+	savedTemplate, err := s.SaveTemplate(template, username)
+	return savedTemplate, err
 }

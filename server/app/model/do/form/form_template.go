@@ -1,21 +1,26 @@
 package form
 
 import (
-	"encoding/json"
 	"time"
 )
 
 // FormTemplate 表单模板
 type FormTemplate struct {
-	ID          int64           `gorm:"column:id;primaryKey;autoIncrement" json:"id"`          // 模板ID
-	Name        string          `gorm:"column:name;not null" json:"name"`                      // 模板名称
-	Description string          `gorm:"column:description" json:"description"`                 // 模板描述
-	FormItems   json.RawMessage `gorm:"column:form_items;type:json;not null" json:"formItems"` // 表单项配置
-	Config      json.RawMessage `gorm:"column:config;type:json;not null" json:"config"`        // 表单配置
-	CreateTime  time.Time       `gorm:"column:create_time;not null" json:"createTime"`         // 创建时间
-	UpdateTime  *time.Time      `gorm:"column:update_time" json:"updateTime"`                  // 更新时间
-	CreateBy    string          `gorm:"column:create_by" json:"createBy"`                      // 创建者
-	UpdateBy    string          `gorm:"column:update_by" json:"updateBy"`                      // 更新者
+	ID             int64      `json:"id" gorm:"primary_key"`
+	Name           string     `json:"name" gorm:"not null"`
+	Description    string     `json:"description"`
+	SubmitURL      string     `json:"submit_url" gorm:"not null"`
+	SubmitMethod   string     `json:"submit_method" gorm:"not null"`
+	SuccessMessage string     `json:"success_message"`
+	FailMessage    string     `json:"fail_message"`
+	FormItems      []byte     `json:"form_items"`
+	Config         []byte     `json:"config"`
+	Status         string     `json:"status" gorm:"default:0"`
+	DelFlag        string     `json:"del_flag" gorm:"default:0"`
+	CreateBy       string     `json:"create_by"`
+	CreateTime     time.Time  `json:"create_time"`
+	UpdateBy       string     `json:"update_by"`
+	UpdateTime     *time.Time `json:"update_time"`
 }
 
 // TableName 表名

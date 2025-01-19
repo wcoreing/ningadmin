@@ -42,27 +42,37 @@ func (c *FormController) GetTemplateList(ctx *gin.Context) {
 
 // SaveTemplate 保存表单模板
 func (c *FormController) SaveTemplate(ctx *gin.Context) {
-	var template formdo.FormTemplate
-	if err := ctx.ShouldBindJSON(&template); err != nil {
+	var req dto.FormTemplateDTO
+	if err := ctx.ShouldBindJSON(&req); err != nil {
 		response.FailWithMessage(response.ERROR, err.Error(), ctx)
 		return
 	}
 
-	// 设置创建者/更新者
-	if template.ID > 0 {
-		template.UpdateBy = utils.GetCurrentUsername(ctx)
-	} else {
-		template.CreateBy = utils.GetCurrentUsername(ctx)
+	// 转换为DO对象
+	template := &formdo.FormTemplate{
+		ID:             req.ID,
+		Name:           req.Name,
+		Description:    req.Description,
+		SubmitURL:      req.SubmitURL,
+		SubmitMethod:   req.SubmitMethod,
+		SuccessMessage: req.SuccessMessage,
+		FailMessage:    req.FailMessage,
+		FormItems:      req.FormItems,
+		Config:         req.Config,
 	}
 
-	err := c.formService.SaveTemplate(&template)
+	// 获取当前用户
+	username := utils.GetCurrentUsername(ctx)
+
+	// 调用 service 层处理业务逻辑
+	savedTemplate, err := c.formService.SaveTemplate(template, username)
 	if err != nil {
 		response.FailWithMessage(response.ERROR, err.Error(), ctx)
 		return
 	}
 
 	response.OkWithData(gin.H{
-		"id": template.ID,
+		"id": savedTemplate.ID,
 	}, ctx)
 }
 
