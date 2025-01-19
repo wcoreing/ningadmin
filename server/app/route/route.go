@@ -3,6 +3,7 @@ package route
 import (
 	"wnadmin/app/controller/auth"
 	"wnadmin/app/controller/entry"
+	"wnadmin/app/controller/form"
 	"wnadmin/app/controller/system"
 	"wnadmin/app/middleware"
 
@@ -18,11 +19,16 @@ func Handle(engine *gin.Engine) {
 	roleController := &system.RoleController{}
 	userController := &system.UserController{}
 	loginController := auth.NewLoginController()
+	formController := form.NewFormController()
 
 	// 登录相关路由（无需认证）
 	engine.POST("/api/auth/login", loginController.Login)
 	engine.POST("/api/auth/logout", loginController.Logout)
-
+	formPublicGroup := engine.Group("/form")
+	{
+		formPublicGroup.GET("/share/:shareCode", formController.GetShareInfo)
+		formPublicGroup.POST("/submit", formController.SubmitForm)
+	}
 	// 需要认证的路由组
 	apiGroup := engine.Group("/api")
 	apiGroup.Use(middleware.JWT())
@@ -79,6 +85,29 @@ func Handle(engine *gin.Engine) {
 				userGroup.PUT("/status", userController.UpdateStatus)
 				userGroup.PUT("/password", userController.ResetPassword)
 			}
+			formGroup := apiGroup.Group("/form")
+			// 表单管理
+			formTemplateGroup := formGroup.Group("/form-template")
+			{
+				formTemplateGroup.GET("/list", formController.GetTemplateList)
+				formTemplateGroup.POST("/save", formController.SaveTemplate)
+				formTemplateGroup.DELETE("/:id", formController.DeleteTemplate)
+			}
+
+			// 表单分享管理
+			formShareGroup := formGroup.Group("/form-share")
+			{
+				formShareGroup.POST("/create", formController.CreateShare)
+			}
+
+			// 表单提交记录管理
+			formSubmissionGroup := formGroup.Group("/form-submission")
+			{
+				formSubmissionGroup.GET("/list", formController.GetSubmissionList)
+			}
+			// 公开的表单路由(不需要认证)
+
 		}
+
 	}
 }

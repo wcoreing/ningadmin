@@ -5,17 +5,21 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/forgoer/openssl"
-	"github.com/gogf/gf/v2/util/gconv"
-	"github.com/parnurzeal/gorequest"
 	"math/rand"
 	"net"
 	"net/http"
 	"net/url"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"wnadmin/app/provider/mylog"
+
+	"github.com/forgoer/openssl"
+	"github.com/gin-gonic/gin"
+	"github.com/gogf/gf/v2/util/gconv"
+	"github.com/google/uuid"
+	"github.com/parnurzeal/gorequest"
 )
 
 func GenerateFileName(originalName string) string {
@@ -184,4 +188,32 @@ func encryptData(data string) string {
 
 func base64Encode(data string) string {
 	return base64.StdEncoding.EncodeToString([]byte(data))
+}
+
+// GetCurrentUsername 获取当前用户名
+func GetCurrentUsername(c *gin.Context) string {
+	if username, exists := c.Get("username"); exists {
+		return username.(string)
+	}
+	return ""
+}
+
+// GetBaseURL 获取基础URL
+func GetBaseURL(c *gin.Context) string {
+	scheme := "http"
+	if c.Request.TLS != nil {
+		scheme = "https"
+	}
+	return scheme + "://" + c.Request.Host
+}
+
+// ParseParamID 解析路径参数ID
+func ParseParamID(c *gin.Context) int64 {
+	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
+	return id
+}
+
+// GenerateUUID 生成UUID
+func GenerateUUID() string {
+	return uuid.New().String()
 }

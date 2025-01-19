@@ -2,7 +2,10 @@ package driver
 
 import (
 	"fmt"
+	"gorm.io/gorm/logger"
+	"gorm.io/gorm/schema"
 	"time"
+	"wnadmin/app/config"
 	"wnadmin/app/provider/db/model"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -21,7 +24,28 @@ func GormMysqlByConfig(m model.Mysql) *gorm.DB {
 		SkipInitializeWithVersion: false,   // 根据版本自动配置
 	}
 	fmt.Println(m.Dsn())
-	if db, err := gorm.Open(mysql.New(mysqlConfig)); err != nil {
+	mysqlConfig2 := config.DB.Mysql["default"]
+	var logLevel logger.LogLevel
+	switch mysqlConfig2.LogMode {
+	case "silent":
+		logLevel = logger.Silent
+	case "error":
+		logLevel = logger.Error
+	case "warn":
+		logLevel = logger.Warn
+	case "info":
+		logLevel = logger.Info
+	default:
+		logLevel = logger.Info
+	}
+
+	gormConfig := &gorm.Config{
+		Logger: logger.Default.LogMode(logLevel),
+		NamingStrategy: schema.NamingStrategy{
+			SingularTable: true, // 使用单数表名
+		},
+	}
+	if db, err := gorm.Open(mysql.New(mysqlConfig), gormConfig); err != nil {
 		panic(err)
 	} else {
 		db.InstanceSet("gorm:table_options", "ENGINE=InnoDB")
