@@ -15,4 +15,9 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url))
     },
   },
+  server: {
+    title: 'WnAdmin-后台管理系统',
+    // 设置为 false 可以禁用 Vite 的默认图标
+    icon: false
+  }
 })

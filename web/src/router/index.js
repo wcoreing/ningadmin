@@ -24,6 +24,7 @@ export const asyncRoutes = [
     path: '/',
     component: Layout,
     redirect: '/dashboard',
+    meta: { title: 'wnadmin', icon: 'dashboard' },
     children: [
       {
         path: 'dashboard',
