@@ -1,6 +1,7 @@
 package form
 
 import (
+	"encoding/json"
 	"wnadmin/app/common/response"
 	"wnadmin/app/common/utils"
 	formdo "wnadmin/app/model/do/form"
@@ -119,68 +120,118 @@ func (c *FormController) CreateShare(ctx *gin.Context) {
 	}, ctx)
 }
 
-// GetShareInfo 获取分享表单信息
-func (c *FormController) GetShareInfo(ctx *gin.Context) {
-	shareCode := ctx.Param("shareCode")
-	if shareCode == "" {
-		response.FailWithMessage(response.ERROR, "无效的参数", ctx)
-		return
-	}
-
-	template, err := c.formService.GetShareInfo(shareCode)
-	if err != nil {
-		response.FailWithMessage(response.ERROR, err.Error(), ctx)
-		return
-	}
-
-	response.OkWithData(gin.H{
-		"templateId": template.ID,
-		"formItems":  template.FormItems,
-		"config":     template.Config,
-	}, ctx)
-}
-
-// SubmitForm 提交表单
-func (c *FormController) SubmitForm(ctx *gin.Context) {
-	var req dto.FormSubmissionDTO
+// CreateTemplate 创建表单模板
+func (c *FormController) CreateTemplate(ctx *gin.Context) {
+	var req dto.FormTemplateCreateDTO
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		response.FailWithMessage(response.ERROR, err.Error(), ctx)
 		return
 	}
 
-	submission := &formdo.FormSubmission{
-		TemplateID: req.TemplateID,
-		FormData:   req.FormData,
-		SubmitBy:   utils.GetCurrentUsername(ctx),
+	template := &formdo.FormTemplate{
+		Name:           req.Name,
+		Description:    req.Description,
+		SubmitURL:      req.SubmitURL,
+		SubmitMethod:   req.SubmitMethod,
+		SuccessMessage: req.SuccessMessage,
+		FailMessage:    req.FailMessage,
+		FormItems:      req.FormItems,
+		Config:         req.Config,
 	}
 
-	err := c.formService.SubmitForm(submission)
+	username := utils.GetCurrentUsername(ctx)
+	savedTemplate, err := c.formService.CreateTemplate(template, username)
 	if err != nil {
 		response.FailWithMessage(response.ERROR, err.Error(), ctx)
 		return
 	}
 
 	response.OkWithData(gin.H{
-		"id": submission.ID,
+		"id": savedTemplate.ID,
 	}, ctx)
 }
 
-// GetSubmissionList 获取表单提交记录
-func (c *FormController) GetSubmissionList(ctx *gin.Context) {
-	var query dto.FormSubmissionQuery
-	if err := ctx.ShouldBindQuery(&query); err != nil {
+// UpdateTemplate 更新表单模板
+func (c *FormController) UpdateTemplate(ctx *gin.Context) {
+	var req dto.FormTemplateDTO
+	if err := ctx.ShouldBindJSON(&req); err != nil {
 		response.FailWithMessage(response.ERROR, err.Error(), ctx)
 		return
 	}
 
-	submissions, total, err := c.formService.GetSubmissionList(&query)
+	if req.ID == 0 {
+		response.FailWithMessage(response.ERROR, "ID不能为空", ctx)
+		return
+	}
+
+	template := &formdo.FormTemplate{
+		ID:             req.ID,
+		Name:           req.Name,
+		Description:    req.Description,
+		SubmitURL:      req.SubmitURL,
+		SubmitMethod:   req.SubmitMethod,
+		SuccessMessage: req.SuccessMessage,
+		FailMessage:    req.FailMessage,
+		FormItems:      req.FormItems,
+		Config:         req.Config,
+	}
+
+	username := utils.GetCurrentUsername(ctx)
+	savedTemplate, err := c.formService.UpdateTemplate(template, username)
 	if err != nil {
 		response.FailWithMessage(response.ERROR, err.Error(), ctx)
 		return
 	}
 
 	response.OkWithData(gin.H{
-		"total": total,
-		"list":  submissions,
+		"id": savedTemplate.ID,
+	}, ctx)
+}
+
+// GetTemplateInfo 获取表单模板详情
+func (c *FormController) GetTemplateInfo(ctx *gin.Context) {
+	id := utils.ParseParamID(ctx)
+	if id <= 0 {
+		response.FailWithMessage(response.ERROR, "无效的参数", ctx)
+		return
+	}
+
+	template, err := c.formService.GetTemplateInfo(id)
+	if err != nil {
+		response.FailWithMessage(response.ERROR, err.Error(), ctx)
+		return
+	}
+
+	// 解析 form_items 和 config
+	var formItems interface{}
+	var config interface{}
+	if template.FormItems != nil {
+		if err := json.Unmarshal(template.FormItems, &formItems); err != nil {
+			response.FailWithMessage(response.ERROR, "解析表单项失败", ctx)
+			return
+		}
+	}
+	if template.Config != nil {
+		if err := json.Unmarshal(template.Config, &config); err != nil {
+			response.FailWithMessage(response.ERROR, "解析配置失败", ctx)
+			return
+		}
+	}
+
+	response.OkWithData(gin.H{
+		"id":             template.ID,
+		"name":           template.Name,
+		"description":    template.Description,
+		"submitUrl":      template.SubmitURL,
+		"submitMethod":   template.SubmitMethod,
+		"successMessage": template.SuccessMessage,
+		"failMessage":    template.FailMessage,
+		"formItems":      formItems,
+		"config":         config,
+		"status":         template.Status,
+		"createBy":       template.CreateBy,
+		"createTime":     template.CreateTime,
+		"updateBy":       template.UpdateBy,
+		"updateTime":     template.UpdateTime,
 	}, ctx)
 }

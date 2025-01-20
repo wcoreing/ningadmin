@@ -105,8 +105,8 @@ func (c *RoleController) Delete(ctx *gin.Context) {
 		return
 	}
 
-	role := &SystemDB.RoleDO{RoleID: id}
-	if err := role.Delete(); err != nil {
+	roleService := system.RoleService{}
+	if err := roleService.DeleteRole(id); err != nil {
 		response.FailWithMessage(201, err.Error(), ctx)
 		return
 	}
@@ -116,22 +116,14 @@ func (c *RoleController) Delete(ctx *gin.Context) {
 
 // UpdateStatus 更新角色状态
 func (c *RoleController) UpdateStatus(ctx *gin.Context) {
-	var req struct {
-		RoleID int64  `json:"roleId"`
-		Status string `json:"status"`
-	}
-
+	var req dto.UpdateRoleStatusReq
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		response.FailWithMessage(201, err.Error(), ctx)
 		return
 	}
 
-	role := &SystemDB.RoleDO{
-		RoleID: req.RoleID,
-		Status: req.Status,
-	}
-
-	if err := role.UpdateStatus(); err != nil {
+	roleService := system.RoleService{}
+	if err := roleService.UpdateRoleStatus(&req, "admin"); err != nil {
 		response.FailWithMessage(201, err.Error(), ctx)
 		return
 	}

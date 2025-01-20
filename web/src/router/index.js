@@ -9,6 +9,12 @@ const publicRoutes = [
     name: 'Login',
     component: () => import('@/views/login/index.vue'),
     meta: { title: '登录' }
+  },
+  {
+    path: '/form/view/:id',
+    name: 'FormView',
+    component: () => import('@/views/form/view/index.vue'),
+    meta: { title: '表单详情' }
   }
 ]
 
@@ -24,6 +30,19 @@ export const asyncRoutes = [
         name: 'Dashboard',
         component: () => import('@/views/dashboard/index.vue'),
         meta: { title: '首页' }
+      }
+    ]
+  },
+  {
+    path: '/form',
+    component: Layout,
+    meta: { title: '表单管理', icon: 'form' },
+    children: [
+      {
+        path: 'list',
+        name: 'FormList',
+        component: () => import('@/views/form/form/index.vue'),
+        meta: { title: '表单列表' }
       }
     ]
   }

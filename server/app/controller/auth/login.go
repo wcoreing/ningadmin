@@ -59,7 +59,6 @@ func (c *LoginController) GetUserInfo(ctx *gin.Context) {
 		response.FailWithMessage(201, "获取权限菜单失败: "+err.Error(), ctx)
 		return
 	}
-
 	// 构造返回数据
 	data := gin.H{
 		"user": userInfo,

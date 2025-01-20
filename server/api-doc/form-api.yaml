@@ -115,7 +115,7 @@ components:
           description: 提交人
 
 paths:
-  /system/form-template/list:
+  /form/template/list:
     get:
       tags:
         - form-template
@@ -169,17 +169,116 @@ paths:
                         items:
                           $ref: '#/components/schemas/FormTemplate'
 
-  /system/form-template/save:
+  /form/template:
     post:
       tags:
         - form-template
-      summary: 保存表单模板
+      summary: 创建表单模板
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/FormTemplate'
+              type: object
+              required:
+                - name
+                - submitUrl
+                - submitMethod
+              properties:
+                name:
+                  type: string
+                  description: 模板名称
+                description:
+                  type: string
+                  description: 模板描述
+                submitUrl:
+                  type: string
+                  description: 提交地址
+                submitMethod:
+                  type: string
+                  description: 提交方法(POST/GET)
+                successMessage:
+                  type: string
+                  description: 成功提示
+                failMessage:
+                  type: string
+                  description: 失败提示
+                formItems:
+                  type: array
+                  description: 表单项配置
+                  items:
+                    type: object
+                config:
+                  type: object
+                  description: 表单配置
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    description: 状态码
+                  msg:
+                    type: string
+                    description: 提示信息
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                        format: int64
+                        description: 模板ID
+    
+    put:
+      tags:
+        - form-template
+      summary: 更新表单模板
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - id
+                - name
+                - submitUrl
+                - submitMethod
+              properties:
+                id:
+                  type: integer
+                  format: int64
+                  description: 模板ID
+                name:
+                  type: string
+                  description: 模板名称
+                description:
+                  type: string
+                  description: 模板描述
+                submitUrl:
+                  type: string
+                  description: 提交地址
+                submitMethod:
+                  type: string
+                  description: 提交方法(POST/GET)
+                successMessage:
+                  type: string
+                  description: 成功提示
+                failMessage:
+                  type: string
+                  description: 失败提示
+                formItems:
+                  type: array
+                  description: 表单项配置
+                  items:
+                    type: object
+                config:
+                  type: object
+                  description: 表单配置
       responses:
         '200':
           description: 成功
@@ -202,7 +301,7 @@ paths:
                         format: int64
                         description: 模板ID
 
-  /system/form-template/{id}:
+  /form/template/{id}:
     delete:
       tags:
         - form-template
@@ -230,7 +329,7 @@ paths:
                     type: string
                     description: 提示信息
 
-  /system/form-share/create:
+  /form/share/create:
     post:
       tags:
         - form-share
@@ -274,7 +373,7 @@ paths:
                         type: string
                         description: 分享链接
 
-  /system/form-share/{shareCode}:
+  /form/share/{shareCode}:
     get:
       tags:
         - form-share
@@ -316,7 +415,7 @@ paths:
                         type: object
                         description: 表单配置
 
-  /system/form-submission/submit:
+  /form/submission/submit:
     post:
       tags:
         - form-submission
@@ -357,7 +456,7 @@ paths:
                         format: int64
                         description: 提交ID
 
-  /system/form-submission/list:
+  /form/submission/list:
     get:
       tags:
         - form-submission

@@ -1,0 +1,266 @@
+openapi: 3.0.0
+info:
+  title: 表单管理接口文档
+  description: 表单管理相关接口说明
+  version: 1.0.0
+  
+servers:
+  - url: /api
+
+paths:
+  /form/list:
+    get:
+      summary: 获取表单列表
+      operationId: getFormList
+      tags:
+        - 表单管理
+      parameters:
+        - in: query
+          name: formName
+          schema:
+            type: string
+          description: 表单名称
+        - in: query
+          name: formStatus
+          schema:
+            type: string
+            enum: ['0', '1']
+          description: 表单状态（0正常 1停用）
+        - in: query
+          name: pageNum
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: 页码
+        - in: query
+          name: pageSize
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+          description: 每页条数
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  list:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Form'
+                  total:
+                    type: integer
+                    description: 总记录数
+                required:
+                  - list
+                  - total
+
+  /form/{id}:
+    get:
+      summary: 获取表单详情
+      operationId: getFormDetail
+      tags:
+        - 表单管理
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          description: 表单ID
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Form'
+    delete:
+      summary: 删除表单
+      operationId: deleteForm
+      tags:
+        - 表单管理
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          description: 表单ID
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: 是否成功
+                required:
+                  - success
+
+  /form:
+    post:
+      summary: 新增表单
+      operationId: addForm
+      tags:
+        - 表单管理
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FormCreate'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: 表单ID
+                required:
+                  - id
+    
+    put:
+      summary: 修改表单
+      operationId: updateForm
+      tags:
+        - 表单管理
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FormUpdate'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: 是否成功
+                required:
+                  - success
+
+components:
+  schemas:
+    FormAttributes:
+      type: object
+      properties:
+        theme:
+          type: string
+          description: 主题
+        fontSize:
+          type: string
+          description: 字体大小
+        width:
+          type: string
+          description: 表单宽度
+
+    FormCreate:
+      type: object
+      required:
+        - templateId
+        - formName
+      properties:
+        templateId:
+          type: integer
+          description: 模板ID
+        formName:
+          type: string
+          description: 表单名称
+        formDescription:
+          type: string
+          description: 表单描述
+        formAttributes:
+          $ref: '#/components/schemas/FormAttributes'
+        formStatus:
+          type: string
+          enum: ['0', '1']
+          default: '0'
+          description: 表单状态（0正常 1停用）
+
+    FormUpdate:
+      type: object
+      required:
+        - id
+        - templateId
+        - formName
+      properties:
+        id:
+          type: integer
+          description: 表单ID
+        templateId:
+          type: integer
+          description: 模板ID
+        formName:
+          type: string
+          description: 表单名称
+        formDescription:
+          type: string
+          description: 表单描述
+        formAttributes:
+          $ref: '#/components/schemas/FormAttributes'
+        formStatus:
+          type: string
+          enum: ['0', '1']
+          description: 表单状态（0正常 1停用）
+
+    Form:
+      type: object
+      required:
+        - id
+        - templateId
+        - formName
+        - formStatus
+        - formCreateTime
+      properties:
+        id:
+          type: integer
+          description: 表单ID
+        templateId:
+          type: integer
+          description: 模板ID
+        formName:
+          type: string
+          description: 表单名称
+        formDescription:
+          type: string
+          description: 表单描述
+        formAttributes:
+          $ref: '#/components/schemas/FormAttributes'
+        formStatus:
+          type: string
+          enum: ['0', '1']
+          description: 表单状态（0正常 1停用）
+        formCreateBy:
+          type: string
+          description: 创建者
+        formCreateTime:
+          type: string
+          format: date-time
+          description: 创建时间
+        formUpdateBy:
+          type: string
+          description: 更新者
+        formUpdateTime:
+          type: string
+          format: date-time
+          description: 更新时间

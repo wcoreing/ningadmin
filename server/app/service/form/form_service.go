@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"time"
 	"wnadmin/app/common/utils"
-	"wnadmin/app/model/do/form"
+	formdo "wnadmin/app/model/do/form"
 	"wnadmin/app/model/dto"
 	"wnadmin/app/provider/db"
 
@@ -24,11 +24,11 @@ func NewFormService() *FormService {
 }
 
 // GetTemplateList 获取表单模板列表
-func (s *FormService) GetTemplateList(query *dto.FormTemplateQuery) ([]form.FormTemplate, int64, error) {
-	var templates []form.FormTemplate
+func (s *FormService) GetTemplateList(query *dto.FormTemplateQuery) ([]formdo.FormTemplate, int64, error) {
+	var templates []formdo.FormTemplate
 	var total int64
 
-	db := s.db.Model(&form.FormTemplate{})
+	db := s.db.Model(&formdo.FormTemplate{})
 	if query.Name != "" {
 		db = db.Where("name LIKE ?", "%"+query.Name+"%")
 	}
@@ -39,6 +39,7 @@ func (s *FormService) GetTemplateList(query *dto.FormTemplateQuery) ([]form.Form
 	}
 
 	err = db.Offset((query.PageNum - 1) * query.PageSize).
+		Order("id desc").
 		Limit(query.PageSize).
 		Find(&templates).Error
 	if err != nil {
@@ -48,23 +49,23 @@ func (s *FormService) GetTemplateList(query *dto.FormTemplateQuery) ([]form.Form
 	return templates, total, nil
 }
 
-// SaveTemplate 保存表单模板
-func (s *FormService) SaveTemplate(template *form.FormTemplate, username string) (*form.FormTemplate, error) {
-	if template.ID == 0 {
-		now := time.Now()
-		template.CreateTime = now
-		template.UpdateTime = utils.Ptr(now)
-		template.Status = "0"
-		template.DelFlag = "0"
-		template.CreateBy = username
-		err := s.db.Create(template).Error
-		if err != nil {
-			return nil, errors.New("创建表单模板失败: " + err.Error())
-		}
-		return template, nil
+// CreateTemplate 创建表单模板
+func (s *FormService) CreateTemplate(template *formdo.FormTemplate, username string) (*formdo.FormTemplate, error) {
+	now := time.Now()
+	template.CreateTime = now
+	template.UpdateTime = utils.Ptr(now)
+	template.Status = "0"
+	template.DelFlag = "0"
+	template.CreateBy = username
+	err := s.db.Create(template).Error
+	if err != nil {
+		return nil, errors.New("创建表单模板失败: " + err.Error())
 	}
+	return template, nil
+}
 
-	// 更新时只更新需要更新的字段
+// UpdateTemplate 更新表单模板
+func (s *FormService) UpdateTemplate(template *formdo.FormTemplate, username string) (*formdo.FormTemplate, error) {
 	now := time.Now()
 	updates := map[string]interface{}{
 		"name":            template.Name,
@@ -93,11 +94,19 @@ func (s *FormService) SaveTemplate(template *form.FormTemplate, username string)
 	return template, nil
 }
 
+// SaveTemplate 保存表单模板
+func (s *FormService) SaveTemplate(template *formdo.FormTemplate, username string) (*formdo.FormTemplate, error) {
+	if template.ID == 0 {
+		return s.CreateTemplate(template, username)
+	}
+	return s.UpdateTemplate(template, username)
+}
+
 // DeleteTemplate 删除表单模板
 func (s *FormService) DeleteTemplate(id int64) error {
 	// 检查是否有提交记录
 	var count int64
-	err := s.db.Model(&form.FormSubmission{}).Where("template_id = ?", id).Count(&count).Error
+	err := s.db.Model(&formdo.FormSubmission{}).Where("template_id = ?", id).Count(&count).Error
 	if err != nil {
 		return err
 	}
@@ -106,25 +115,25 @@ func (s *FormService) DeleteTemplate(id int64) error {
 	}
 
 	// 删除分享记录
-	err = s.db.Where("template_id = ?", id).Delete(&form.FormShare{}).Error
+	err = s.db.Where("template_id = ?", id).Delete(&formdo.FormShare{}).Error
 	if err != nil {
 		return err
 	}
 
 	// 删除模板
-	return s.db.Delete(&form.FormTemplate{}, id).Error
+	return s.db.Delete(&formdo.FormTemplate{}, id).Error
 }
 
 // CreateShare 创建表单分享
-func (s *FormService) CreateShare(share *form.FormShare) error {
+func (s *FormService) CreateShare(share *formdo.FormShare) error {
 	share.ShareCode = utils.GenerateUUID()
 	share.CreateTime = time.Now()
 	return s.db.Create(share).Error
 }
 
 // GetShareInfo 获取分享表单信息
-func (s *FormService) GetShareInfo(shareCode string) (*form.FormTemplate, error) {
-	var share form.FormShare
+func (s *FormService) GetShareInfo(shareCode string) (*formdo.FormTemplate, error) {
+	var share formdo.FormShare
 	err := s.db.Where("share_code = ?", shareCode).First(&share).Error
 	if err != nil {
 		return nil, err
@@ -134,7 +143,7 @@ func (s *FormService) GetShareInfo(shareCode string) (*form.FormTemplate, error)
 		return nil, errors.New("分享链接已过期")
 	}
 
-	var template form.FormTemplate
+	var template formdo.FormTemplate
 	err = s.db.First(&template, share.TemplateID).Error
 	if err != nil {
 		return nil, err
@@ -144,17 +153,17 @@ func (s *FormService) GetShareInfo(shareCode string) (*form.FormTemplate, error)
 }
 
 // SubmitForm 提交表单
-func (s *FormService) SubmitForm(submission *form.FormSubmission) error {
+func (s *FormService) SubmitForm(submission *formdo.FormSubmission) error {
 	submission.SubmitTime = time.Now()
 	return s.db.Create(submission).Error
 }
 
 // GetSubmissionList 获取表单提交记录
-func (s *FormService) GetSubmissionList(query *dto.FormSubmissionQuery) ([]form.FormSubmission, int64, error) {
-	var submissions []form.FormSubmission
+func (s *FormService) GetSubmissionList(query *dto.FormSubmissionQuery) ([]formdo.FormSubmission, int64, error) {
+	var submissions []formdo.FormSubmission
 	var total int64
 
-	db := s.db.Model(&form.FormSubmission{}).Where("template_id = ?", query.TemplateID)
+	db := s.db.Model(&formdo.FormSubmission{}).Where("template_id = ?", query.TemplateID)
 
 	err := db.Count(&total).Error
 	if err != nil {
@@ -172,8 +181,8 @@ func (s *FormService) GetSubmissionList(query *dto.FormSubmissionQuery) ([]form.
 }
 
 // SaveTemplateFromRequest 从请求数据保存表单模板
-func (s *FormService) SaveTemplateFromRequest(reqData map[string]interface{}, username string) (*form.FormTemplate, error) {
-	template := &form.FormTemplate{
+func (s *FormService) SaveTemplateFromRequest(reqData map[string]interface{}, username string) (*formdo.FormTemplate, error) {
+	template := &formdo.FormTemplate{
 		Name:           reqData["name"].(string),
 		Description:    reqData["description"].(string),
 		SubmitURL:      reqData["submitUrl"].(string),
@@ -210,4 +219,14 @@ func (s *FormService) SaveTemplateFromRequest(reqData map[string]interface{}, us
 
 	savedTemplate, err := s.SaveTemplate(template, username)
 	return savedTemplate, err
+}
+
+// GetTemplateInfo 获取表单模板详情
+func (s *FormService) GetTemplateInfo(id int64) (*formdo.FormTemplate, error) {
+	var template formdo.FormTemplate
+	err := s.db.First(&template, id).Error
+	if err != nil {
+		return nil, err
+	}
+	return &template, nil
 }

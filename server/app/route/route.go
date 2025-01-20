@@ -20,15 +20,13 @@ func Handle(engine *gin.Engine) {
 	userController := &system.UserController{}
 	loginController := auth.NewLoginController()
 	formController := form.NewFormController()
+	formListController := form.NewFormListController()
 
 	// 登录相关路由（无需认证）
 	engine.POST("/api/auth/login", loginController.Login)
 	engine.POST("/api/auth/logout", loginController.Logout)
-	formPublicGroup := engine.Group("/form")
-	{
-		formPublicGroup.GET("/share/:shareCode", formController.GetShareInfo)
-		formPublicGroup.POST("/submit", formController.SubmitForm)
-	}
+	engine.POST("/api/form/data/submit", form.NewFormDataController().SubmitForm)
+
 	// 需要认证的路由组
 	apiGroup := engine.Group("/api")
 	apiGroup.Use(middleware.JWT())
@@ -87,27 +85,40 @@ func Handle(engine *gin.Engine) {
 			}
 			formGroup := apiGroup.Group("/form")
 			// 表单管理
-			formTemplateGroup := formGroup.Group("/form-template")
+			formTemplateGroup := formGroup.Group("/template")
 			{
 				formTemplateGroup.GET("/list", formController.GetTemplateList)
-				formTemplateGroup.POST("/save", formController.SaveTemplate)
+				formTemplateGroup.POST("", formController.CreateTemplate)
+				formTemplateGroup.PUT("", formController.UpdateTemplate)
 				formTemplateGroup.DELETE("/:id", formController.DeleteTemplate)
+				formTemplateGroup.GET("/:id", formController.GetTemplateInfo)
 			}
 
 			// 表单分享管理
-			formShareGroup := formGroup.Group("/form-share")
+			formShareGroup := formGroup.Group("/share")
 			{
 				formShareGroup.POST("/create", formController.CreateShare)
 			}
 
-			// 表单提交记录管理
-			formSubmissionGroup := formGroup.Group("/form-submission")
+			// 表单管理
+			formFormGroup := formGroup.Group("form")
 			{
-				formSubmissionGroup.GET("/list", formController.GetSubmissionList)
+				formFormGroup.GET("list", formListController.GetFormList)
+				formFormGroup.GET("/:id", formListController.GetFormDetail)
+				formFormGroup.POST("", formListController.CreateForm)
+				formFormGroup.PUT("", formListController.UpdateForm)
+				formFormGroup.DELETE("/:id", formListController.DeleteForm)
 			}
-			// 公开的表单路由(不需要认证)
 
+			// 表单数据管理
+			formDataController := form.NewFormDataController()
+			formDataGroup := formGroup.Group("/data")
+			{
+
+				formDataGroup.GET("/list", formDataController.GetFormDataList)  // 获取表单数据列表
+				formDataGroup.GET("/:id", formDataController.GetFormDataDetail) // 获取表单数据详情
+				formDataGroup.DELETE("/:id", formDataController.DeleteFormData) // 删除表单数据
+			}
 		}
-
 	}
 }
