@@ -1,0 +1,274 @@
+openapi: 3.0.0
+info:
+  title: 表单数据管理接口
+  description: 提供表单数据的查询、删除等功能
+  version: 1.0.0
+  
+servers:
+  - url: /api
+    description: 开发环境
+
+tags:
+  - name: form-data
+    description: 表单数据管理
+
+paths:
+  /form/data/list:
+    get:
+      summary: 获取表单数据列表
+      description: 分页获取表单数据列表，支持按表单名称和时间范围筛选
+      tags:
+        - form-data
+      parameters:
+        - name: pageNum
+          in: query
+          description: 当前页码
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: pageSize
+          in: query
+          description: 每页数量
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+        - name: formName
+          in: query
+          description: 表单名称（模糊查询）
+          required: false
+          schema:
+            type: string
+        - name: startTime
+          in: query
+          description: 开始时间
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: endTime
+          in: query
+          description: 结束时间
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    description: 状态码
+                    example: 200
+                  msg:
+                    type: string
+                    description: 提示信息
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                        description: 总记录数
+                        example: 100
+                      list:
+                        type: array
+                        description: 数据列表
+                        items:
+                          $ref: '#/components/schemas/FormData'
+        '400':
+          description: 请求参数错误
+        '500':
+          description: 服务器内部错误
+
+  /form/data/{id}:
+    get:
+      summary: 获取表单数据详情
+      description: 根据ID获取单条表单数据的详细信息
+      tags:
+        - form-data
+      parameters:
+        - name: id
+          in: path
+          description: 表单数据ID
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    description: 状态码
+                    example: 200
+                  msg:
+                    type: string
+                    description: 提示信息
+                    example: success
+                  data:
+                    $ref: '#/components/schemas/FormData'
+        '404':
+          description: 数据不存在
+        '500':
+          description: 服务器内部错误
+
+    delete:
+      summary: 删除表单数据
+      description: 根据ID删除单条表单数据
+      tags:
+        - form-data
+      parameters:
+        - name: id
+          in: path
+          description: 表单数据ID
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    description: 状态码
+                    example: 200
+                  msg:
+                    type: string
+                    description: 提示信息
+                    example: success
+        '404':
+          description: 数据不存在
+        '500':
+          description: 服务器内部错误
+
+  /form/data/submit:
+    post:
+      summary: 提交表单数据
+      description: 提交表单数据并保存
+      tags:
+        - form-data
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - formId
+                - data
+                - submitter
+              properties:
+                formId:
+                  type: integer
+                  description: 表单ID
+                  example: 1
+                data:
+                  type: object
+                  description: 表单数据，JSON格式
+                  example:
+                    field1: value1
+                    field2: value2
+                submitter:
+                  type: object
+                  description: 提交者信息
+                  example:
+                    name: 张三
+                    email: zhangsan@example.com
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    description: 状态码
+                    example: 200
+                  msg:
+                    type: string
+                    description: 提示信息
+                    example: success
+        '400':
+          description: 请求参数错误
+        '500':
+          description: 服务器内部错误
+
+components:
+  schemas:
+    FormData:
+      type: object
+      description: 表单数据对象
+      properties:
+        id:
+          type: integer
+          description: 数据ID
+          example: 1
+        formId:
+          type: integer
+          description: 表单ID
+          example: 1
+        formName:
+          type: string
+          description: 表单名称
+          example: 测试表单1
+        data:
+          type: object
+          description: 表单提交的数据，JSON格式
+          example:
+            单行文本: 这是一段测试文本
+            多行文本: 这是一段比较长的测试文本
+            下拉选择: 选项1
+            日期选择: '2024-01-20'
+            图片上传:
+              - name: image1.jpg
+                url: https://example.com/image1.jpg
+        submitter:
+          type: object
+          description: 提交者信息
+          properties:
+            name:
+              type: string
+              description: 提交者姓名
+              example: 张三
+            email:
+              type: string
+              description: 提交者邮箱
+              example: zhangsan@example.com
+        ip:
+          type: string
+          description: 提交者IP地址
+          example: 192.168.1.1
+        status:
+          type: string
+          description: 提交状态（0-成功，1-失败，2-处理中）
+          enum: ['0', '1', '2']
+          example: '0'
+        createBy:
+          type: string
+          description: 提交人ID
+          example: user123
+        createTime:
+          type: string
+          format: date-time
+          description: 提交时间
+          example: '2024-01-20T14:30:00Z'

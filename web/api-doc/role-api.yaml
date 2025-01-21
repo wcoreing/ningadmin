@@ -1,0 +1,469 @@
+openapi: 3.0.0
+info:
+  title: 角色管理接口文档
+  description: 提供角色的增删改查等相关接口
+  version: 1.0.0
+  contact:
+    name: WnAdmin Team
+    email: support@wnadmin.com
+
+servers:
+  - url: /api
+    description: 开发环境
+
+tags:
+  - name: role
+    description: 角色管理相关接口
+
+paths:
+  /system/role/list:
+    get:
+      summary: 获取角色列表
+      description: 分页获取角色列表，支持按角色名称、状态搜索
+      operationId: getRoleList
+      tags: [role]
+      parameters:
+        - name: pageNum
+          in: query
+          description: 当前页码
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: pageSize
+          in: query
+          description: 每页数量
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+            default: 10
+        - name: roleName
+          in: query
+          description: 角色名称
+          schema:
+            type: string
+            maxLength: 30
+        - name: status
+          in: query
+          description: 角色状态（0正常 1停用）
+          schema:
+            type: string
+            enum: ['0', '1']
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /system/role/{roleId}:
+    get:
+      summary: 获取角色详情
+      description: 根据角色ID获取角色详细信息
+      operationId: getRoleInfo
+      tags: [role]
+      parameters:
+        - name: roleId
+          in: path
+          required: true
+          description: 角色ID
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      summary: 删除角色
+      description: 根据角色ID删除角色信息
+      operationId: deleteRole
+      tags: [role]
+      parameters:
+        - name: roleId
+          in: path
+          required: true
+          description: 角色ID
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /system/role:
+    post:
+      summary: 新增角色
+      description: 新增角色信息
+      operationId: createRole
+      tags: [role]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoleCreate'
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    put:
+      summary: 修改角色
+      description: 修改角色信息
+      operationId: updateRole
+      tags: [role]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoleUpdate'
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /system/role/status:
+    put:
+      summary: 修改角色状态
+      description: 启用/停用角色
+      operationId: updateRoleStatus
+      tags: [role]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoleStatusUpdate'
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /system/role/permission/{roleId}:
+    get:
+      summary: 获取角色权限
+      description: 获取指定角色的权限列表
+      operationId: getRolePermissions
+      tags: [role]
+      parameters:
+        - name: roleId
+          in: path
+          required: true
+          description: 角色ID
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PermissionResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /system/role/permission:
+    put:
+      summary: 分配角色权限
+      description: 更新角色的权限信息
+      operationId: updateRolePermissions
+      tags: [role]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RolePermissionUpdate'
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+  schemas:
+    Role:
+      type: object
+      properties:
+        roleId:
+          type: integer
+          format: int64
+          description: 角色ID
+        roleName:
+          type: string
+          maxLength: 30
+          description: 角色名称
+        roleKey:
+          type: string
+          maxLength: 100
+          description: 角色标识
+        status:
+          type: string
+          enum: ['0', '1']
+          description: 角色状态（0正常 1停用）
+        createTime:
+          type: string
+          format: date-time
+          description: 创建时间
+        createBy:
+          type: string
+          maxLength: 64
+          description: 创建者
+        updateTime:
+          type: string
+          format: date-time
+          description: 更新时间
+        updateBy:
+          type: string
+          maxLength: 64
+          description: 更新者
+
+    RoleCreate:
+      type: object
+      required:
+        - roleName
+        - roleKey
+      properties:
+        roleName:
+          type: string
+          maxLength: 30
+          description: 角色名称
+        roleKey:
+          type: string
+          maxLength: 100
+          description: 角色标识
+        status:
+          type: string
+          enum: ['0', '1']
+          default: '0'
+          description: 角色状态（0正常 1停用）
+
+    RoleUpdate:
+      type: object
+      required:
+        - roleId
+        - roleName
+        - roleKey
+      properties:
+        roleId:
+          type: integer
+          format: int64
+          description: 角色ID
+        roleName:
+          type: string
+          maxLength: 30
+          description: 角色名称
+        roleKey:
+          type: string
+          maxLength: 100
+          description: 角色标识
+        status:
+          type: string
+          enum: ['0', '1']
+          description: 角色状态（0正常 1停用）
+
+    RoleStatusUpdate:
+      type: object
+      required:
+        - roleId
+        - status
+      properties:
+        roleId:
+          type: integer
+          format: int64
+          description: 角色ID
+        status:
+          type: string
+          enum: ['0', '1']
+          description: 角色状态（0正常 1停用）
+
+    RolePermissionUpdate:
+      type: object
+      required:
+        - roleId
+        - permissionIds
+      properties:
+        roleId:
+          type: integer
+          format: int64
+          description: 角色ID
+        permissionIds:
+          type: array
+          description: 权限ID列表
+          items:
+            type: integer
+            format: int64
+
+    Result:
+      type: object
+      properties:
+        code:
+          type: integer
+          description: 响应码
+          example: 200
+        msg:
+          type: string
+          description: 响应消息
+          example: 操作成功
+
+    DataResult:
+      allOf:
+        - $ref: '#/components/schemas/Result'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/Role'
+
+    PageResult:
+      allOf:
+        - $ref: '#/components/schemas/Result'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                total:
+                  type: integer
+                  description: 总记录数
+                list:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/Role'
+
+    PermissionResult:
+      allOf:
+        - $ref: '#/components/schemas/Result'
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                type: integer
+                format: int64
+                description: 权限ID列表
+
+  responses:
+    Success:
+      description: 操作成功
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Result'
+
+    BadRequest:
+      description: 请求参数错误
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/Result'
+              - type: object
+                properties:
+                  code:
+                    example: 400
+                  msg:
+                    example: 请求参数错误
+
+    Unauthorized:
+      description: 未授权
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/Result'
+              - type: object
+                properties:
+                  code:
+                    example: 401
+                  msg:
+                    example: 未授权
+
+    NotFound:
+      description: 资源不存在
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/Result'
+              - type: object
+                properties:
+                  code:
+                    example: 404
+                  msg:
+                    example: 资源不存在
+
+    InternalError:
+      description: 服务器内部错误
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/Result'
+              - type: object
+                properties:
+                  code:
+                    example: 500
+                  msg:
+                    example: 服务器内部错误 

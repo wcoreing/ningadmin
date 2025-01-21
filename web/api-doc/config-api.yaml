@@ -1,0 +1,227 @@
+openapi: 3.0.0
+info:
+  title: 配置管理接口文档
+  version: 1.0.0
+  description: 系统配置管理相关接口
+
+paths:
+  /system/config/list:
+    get:
+      summary: 获取配置列表
+      parameters:
+        - name: pageNum
+          in: query
+          description: 当前页码
+          required: true
+          schema:
+            type: integer
+        - name: pageSize
+          in: query
+          description: 每页数量
+          required: true
+          schema:
+            type: integer
+        - name: keyword
+          in: query
+          description: 搜索关键字
+          schema:
+            type: string
+        - name: moduleKey
+          in: query
+          description: 模块标识
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigListResponse'
+              
+  /system/config/add:
+    post:
+      summary: 新增配置
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfigAddRequest'
+      responses:
+        '200':
+          description: 成功
+          
+  /system/config/update:
+    put:
+      summary: 修改配置
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfigUpdateRequest'
+      responses:
+        '200':
+          description: 成功
+          
+  /system/config/delete/{id}:
+    delete:
+      summary: 删除配置
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 成功
+          
+  /system/config/info/{id}:
+    get:
+      summary: 获取配置详情
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigInfoResponse'
+                
+  /system/config/check-key:
+    get:
+      summary: 检查配置键是否存在
+      parameters:
+        - name: configKey
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: moduleKey
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigCheckResponse'
+
+components:
+  schemas:
+    ConfigListResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+        msg:
+          type: string
+        data:
+          type: object
+          properties:
+            total:
+              type: integer
+            list:
+              type: array
+              items:
+                $ref: '#/components/schemas/ConfigInfo'
+                
+    ConfigAddRequest:
+      type: object
+      required:
+        - configName
+        - configKey
+        - configValue
+        - configType
+        - moduleKey
+      properties:
+        configName:
+          type: string
+        configKey:
+          type: string
+        configValue:
+          type: string
+        configType:
+          type: string
+          enum: [string, number, boolean, date]
+        moduleKey:
+          type: string
+        remark:
+          type: string
+          
+    ConfigUpdateRequest:
+      type: object
+      required:
+        - id
+        - configName
+        - configValue
+        - configType
+        - moduleKey
+      properties:
+        id:
+          type: integer
+        configName:
+          type: string
+        configValue:
+          type: string
+        configType:
+          type: string
+          enum: [string, number, boolean, date]
+        moduleKey:
+          type: string
+        remark:
+          type: string
+          
+    ConfigInfo:
+      type: object
+      properties:
+        id:
+          type: integer
+        configName:
+          type: string
+        configKey:
+          type: string
+        configValue:
+          type: string
+        configType:
+          type: string
+        moduleKey:
+          type: string
+        moduleName:
+          type: string
+        remark:
+          type: string
+        createTime:
+          type: string
+        updateTime:
+          type: string
+          
+    ConfigInfoResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+        msg:
+          type: string
+        data:
+          $ref: '#/components/schemas/ConfigInfo'
+          
+    ConfigCheckResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+        msg:
+          type: string
+        data:
+          type: boolean 
