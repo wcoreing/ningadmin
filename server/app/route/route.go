@@ -120,5 +120,8 @@ func Handle(engine *gin.Engine) {
 				formDataGroup.DELETE("/:id", formDataController.DeleteFormData) // 删除表单数据
 			}
 		}
+
+		// 初始化商品相关路由
+		InitShopRoutes(apiGroup)
 	}
 }

@@ -1,0 +1,169 @@
+---
+description: test
+globs: 
+---
+# 数据库设计规范
+
+## 一、表结构变更原则
+
+1. 已有表字段禁止修改
+   - 禁止修改字段名
+   - 禁止修改字段类型
+   - 禁止修改字段长度
+   - 禁止修改字段注释
+   - 禁止修改字段默认值
+
+2. 只允许新增字段
+   - 新增字段前必须检查是否已有相同含义的字段
+   - 如果有相同含义的字段，必须使用原有字段
+   - 新增字段必须遵循命名规范
+   - 新增字段必须添加注释
+
+## 二、基础字段规范
+
+所有表都必须包含以下基础字段：
+```sql
+`id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+`is_delete` tinyint NOT NULL DEFAULT '0' COMMENT '是否删除',
+`create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+`update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间'
+```
+
+## 三、字段命名规范
+
+1. 使用下划线命名法
+2. 字段名要见名知意
+3. 相同含义的字段在不同表中使用相同的命名
+
+常用字段命名：
+- `user_id`: 用户ID
+- `goods_id`: 商品ID
+- `order_no`: 订单编号
+- `status`: 状态
+- `sort`: 排序
+- `name`: 名称
+- `title`: 标题
+- `content`: 内容
+- `remark`: 备注
+- `type`: 类型
+- `price`: 价格
+- `amount`: 金额
+- `quantity`: 数量
+- `image`: 图片
+- `url`: 链接
+
+## 四、索引规范
+
+1. 主键索引
+   - 必须使用 `id` 字段作为主键
+   - 使用 `AUTO_INCREMENT`
+
+2. 唯一索引
+   - 以 `uk_` 开头
+   - 例如：`uk_order_no`、`uk_username`
+
+3. 普通索引
+   - 以 `idx_` 开头
+   - 例如：`idx_user_id`、`idx_status`
+
+## 五、表关联规范
+
+1. 关联字段
+   - 使用 `bigint` 类型
+   - 必须建立索引
+   - 命名规则：`表名_id`
+   - 例如：`goods_id`、`order_id`
+
+2. 关联表命名
+   - 使用 `表名1_表名2_relation`
+   - 例如：`goods_tag_relation`
+
+## 六、状态字段规范
+
+1. 字段类型
+   - 使用 `tinyint` 类型
+   - 默认值为 0
+
+2. 注释规范
+   - 必须在注释中说明每个状态值的含义
+   - 例如：`status` tinyint NOT NULL DEFAULT '0' COMMENT '状态(0:禁用 1:正常)'
+
+## 七、时间字段规范
+
+1. 字段类型
+   - 统一使用 `datetime` 类型
+
+2. 默认值
+   - 创建时间：`DEFAULT CURRENT_TIMESTAMP`
+   - 更新时间：`DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`
+
+3. 常用时间字段
+   - `create_time`: 创建时间
+   - `update_time`: 更新时间
+   - `delete_time`: 删除时间
+   - `start_time`: 开始时间
+   - `end_time`: 结束时间
+
+## 八、软删除规范
+
+1. 字段定义
+   ```sql
+   `is_delete` tinyint NOT NULL DEFAULT '0' COMMENT '是否删除'
+   ```
+
+2. 使用规范
+   - 0: 未删除
+   - 1: 已删除
+   - 查询时必须加上 `is_delete = 0` 的条件
+
+## 九、字符串字段规范
+
+1. varchar 类型
+   - 用户输入的文本
+   - 长度要合理，不要过大
+   - 例如：`name varchar(50)`
+
+2. text 类型
+   - 大文本内容
+   - 富文本内容
+   - 例如：商品详情、文章内容
+
+3. json 类型
+   - JSON 数据使用 json 类型
+   - 例如：商品规格、配置信息
+
+## 十、金额字段规范
+
+1. 字段类型
+   - 统一使用 `decimal(10,2)`
+   - 10 位整数，2 位小数
+
+2. 命名规范
+   - 价格：`price`
+   - 金额：`amount`
+   - 例如：`total_amount`、`pay_amount`
+
+## 十一、注释规范
+
+1. 表注释
+   - 必须添加表注释
+   - 说明表的用途
+
+2. 字段注释
+   - 必须添加字段注释
+   - 说明字段的用途
+   - 如果是状态字段，说明每个状态的含义
+
+## 十二、其他规范
+
+1. 编码字符集
+   - 统一使用 `utf8mb4`
+   - 排序规则使用 `utf8mb4_general_ci`
+
+2. 存储引擎
+   - 统一使用 `InnoDB`
+
+3. 表名规范
+   - 使用小写字母
+   - 使用下划线分隔
+   - 例如：`shop_goods`、`shop_order` 

@@ -18,5 +18,5 @@ func main() {
 	r := gin.Default()
 	r.Use(middleware.CORSMiddleware())
 	route.Handle(r)
-	r.Run(fmt.Sprintf(":%d", config.App.Port)) // listen and serve on 0.0.0.0:8080
+	r.Run(fmt.Sprintf(":%d", config.App.Port))
 }
