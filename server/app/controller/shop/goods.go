@@ -2,6 +2,7 @@ package shop
 
 import (
 	"fmt"
+	"strconv"
 	"wnadmin/app/common/response"
 	"wnadmin/app/common/utils"
 	"wnadmin/app/model/dto"
@@ -112,6 +113,59 @@ func (c *GoodsController) UpdateStatus(ctx *gin.Context) {
 
 	if err := c.goodsService.UpdateGoodsStatus(req.Id, status); err != nil {
 		response.FailWithMessage(201, "更新商品状态失败: "+err.Error(), ctx)
+		return
+	}
+
+	response.OkWithMessage("更新成功", ctx)
+}
+
+// GetInfo 获取商品详情
+// @Summary 获取商品详情
+// @Description 获取商品详情信息
+// @Tags 商品管理
+// @Accept json
+// @Produce json
+// @Param id path int true "商品ID"
+// @Success 200 {object} response.Response{data=dto.GoodsInfoResp} "成功"
+// @Router /shop/goods/info/{id} [get]
+func (c *GoodsController) GetInfo(ctx *gin.Context) {
+	// 获取商品ID
+	idStr := ctx.Param("id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		response.FailWithMessage(201, "无效的商品ID", ctx)
+		return
+	}
+
+	// 获取商品详情
+	info, err := c.goodsService.GetGoodsInfo(id)
+	if err != nil {
+		response.FailWithMessage(201, err.Error(), ctx)
+		return
+	}
+
+	response.OkWithData(info, ctx)
+}
+
+// Update 更新商品
+// @Summary 更新商品
+// @Description 更新商品信息
+// @Tags 商品管理
+// @Accept json
+// @Produce json
+// @Param data body dto.GoodsUpdateReq true "商品信息"
+// @Success 200 {object} response.Response "成功"
+// @Router /shop/goods/update [put]
+func (c *GoodsController) Update(ctx *gin.Context) {
+	var req dto.GoodsUpdateReq
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		response.FailWithMessage(201, "参数错误: "+err.Error(), ctx)
+		return
+	}
+
+	// 更新商品
+	if err := c.goodsService.UpdateGoods(&req); err != nil {
+		response.FailWithMessage(201, err.Error(), ctx)
 		return
 	}
 

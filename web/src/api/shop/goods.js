@@ -56,4 +56,21 @@ export function getTagList() {
     url: '/shop/tag/list',
     method: 'get'
   })
+}
+
+// 获取商品详情
+export function getGoodsInfo(id) {
+  return request({
+    url: `/shop/goods/info/${id}`,
+    method: 'get'
+  })
+}
+
+// 更新商品
+export function updateGoods(data) {
+  return request({
+    url: '/shop/goods/update',
+    method: 'put',
+    data
+  })
 } 

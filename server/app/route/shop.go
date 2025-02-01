@@ -17,6 +17,8 @@ func InitShopRoutes(apiGroup *gin.RouterGroup) {
 			goodsGroup.GET("/list", goodsController.List)
 			goodsGroup.DELETE("/delete/:id", goodsController.Delete)
 			goodsGroup.PUT("/status", goodsController.UpdateStatus)
+			goodsGroup.GET("/info/:id", goodsController.GetInfo)
+			goodsGroup.PUT("/update", goodsController.Update)
 		}
 
 		// 商品分类

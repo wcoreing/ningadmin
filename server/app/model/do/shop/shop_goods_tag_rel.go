@@ -9,10 +9,10 @@ import (
 
 // ShopGoodsTagRel 商品标签关联
 type ShopGoodsTagRel struct {
-	ID         int64     `gorm:"primaryKey;column:id" json:"id"`
-	GoodsId    int64     `gorm:"column:goods_id" json:"goodsId"`       // 商品ID
-	TagId      int64     `gorm:"column:tag_id" json:"tagId"`           // 标签ID
-	CreateTime time.Time `gorm:"column:create_time" json:"createTime"` // 创建时间
+	Id         int64     `json:"id" gorm:"column:id;primaryKey;comment:ID"`
+	GoodsId    int64     `json:"goodsId" gorm:"column:goods_id;comment:商品ID"`
+	TagId      int64     `json:"tagId" gorm:"column:tag_id;comment:标签ID"`
+	CreateTime time.Time `json:"createTime" gorm:"column:create_time;autoCreateTime;comment:创建时间"`
 }
 
 // TableName 表名
@@ -21,6 +21,6 @@ func (ShopGoodsTagRel) TableName() string {
 }
 
 // Query 获取查询构建器
-func (s *ShopGoodsTagRel) Query() *gorm.DB {
-	return db.DB.WnAdmin.Model(s)
+func (g *ShopGoodsTagRel) Query() *gorm.DB {
+	return db.DB.WnAdmin.Model(g)
 }

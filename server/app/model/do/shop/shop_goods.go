@@ -11,7 +11,7 @@ import (
 
 // GoodsDO 商品信息
 type GoodsDO struct {
-	GoodsId       int64     `json:"goodsId" gorm:"column:id;primaryKey;comment:商品ID"`
+	Id            int64     `json:"goodsId" gorm:"column:id;primaryKey;comment:商品ID"`
 	CategoryId    int64     `json:"categoryId" gorm:"column:category_id;comment:分类ID"`
 	SupplierId    int64     `json:"supplierId" gorm:"column:supplier_id;comment:供应商ID"`
 	BrandId       int64     `json:"brandId" gorm:"column:brand_id;comment:品牌ID"`
@@ -78,7 +78,7 @@ func (g *GoodsDO) Update() error {
 
 // Delete 删除商品
 func (g *GoodsDO) Delete() error {
-	return g.Query().Where("goods_id = ?", g.GoodsId).Update("is_delete", 1).Error
+	return g.Query().Where("goods_id = ?", g.Id).Update("is_delete", 1).Error
 }
 
 // First 获取单个商品
@@ -93,7 +93,7 @@ func (g *GoodsDO) Find(dest interface{}) error {
 
 // UpdateStatus 更新商品状态
 func (g *GoodsDO) UpdateStatus() error {
-	return g.Query().Where("goods_id = ?", g.GoodsId).Update("status", g.Status).Error
+	return g.Query().Where("goods_id = ?", g.Id).Update("status", g.Status).Error
 }
 
 // GetGoodsList 获取商品列表

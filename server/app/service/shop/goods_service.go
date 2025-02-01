@@ -1,8 +1,14 @@
 package shop
 
 import (
+	"fmt"
+	"strconv"
+	"time"
 	"wnadmin/app/model/do/shop"
 	"wnadmin/app/model/dto"
+	"wnadmin/app/provider/db"
+
+	"gorm.io/gorm"
 )
 
 // GoodsService 商品服务
@@ -36,7 +42,7 @@ func (s *GoodsService) GetGoodsList(req *dto.GoodsListReq) (*dto.PageResult, err
 		var tagNames []string
 
 		if err := (&shop.ShopGoodsTagRel{}).Query().
-			Where("goods_id = ?", g.GoodsId).
+			Where("goods_id = ?", g.Id).
 			Find(&tagRels).Error; err == nil {
 			for _, rel := range tagRels {
 				tagIds = append(tagIds, rel.TagId)
@@ -47,7 +53,7 @@ func (s *GoodsService) GetGoodsList(req *dto.GoodsListReq) (*dto.PageResult, err
 		}
 
 		item := dto.GoodsDTO{
-			GoodsId:       g.GoodsId,
+			GoodsId:       g.Id,
 			CategoryId:    g.CategoryId,
 			CategoryName:  categoryMap[g.CategoryId],
 			SupplierId:    g.SupplierId,
@@ -140,7 +146,7 @@ func (s *GoodsService) getTagMap(goods []shop.GoodsDO) map[int64]string {
 	result := make(map[int64]string)
 	var goodsIds []int64
 	for _, g := range goods {
-		goodsIds = append(goodsIds, g.GoodsId)
+		goodsIds = append(goodsIds, g.Id)
 	}
 
 	if len(goodsIds) > 0 {
@@ -171,15 +177,140 @@ func (s *GoodsService) getTagMap(goods []shop.GoodsDO) map[int64]string {
 
 // DeleteGoods 删除商品
 func (s *GoodsService) DeleteGoods(id int64) error {
-	goodsDO := &shop.GoodsDO{GoodsId: id}
+	goodsDO := &shop.GoodsDO{Id: id}
 	return goodsDO.Delete()
 }
 
 // UpdateGoodsStatus 更新商品状态
 func (s *GoodsService) UpdateGoodsStatus(id int64, status int8) error {
 	goodsDO := &shop.GoodsDO{
-		GoodsId: id,
-		Status:  status,
+		Id:     id,
+		Status: status,
 	}
 	return goodsDO.UpdateStatus()
+}
+
+// GetGoodsInfo 获取商品详情
+func (s *GoodsService) GetGoodsInfo(id int64) (*dto.GoodsInfoResp, error) {
+	goods := &shop.GoodsDO{Id: id}
+	if err := goods.First(); err != nil {
+		return nil, err
+	}
+
+	// 获取商品主图
+	var mainImage shop.GoodsImageDO
+	if err := (&shop.GoodsImageDO{}).Query().
+		Where("goods_id = ? AND is_main = 1", id).
+		First(&mainImage).Error; err != nil && err != gorm.ErrRecordNotFound {
+		return nil, err
+	}
+
+	// 获取商品标签关联
+	var tagRels []shop.ShopGoodsTagRel
+	var tagIds []int64
+	if err := (&shop.ShopGoodsTagRel{}).Query().
+		Where("goods_id = ?", id).
+		Find(&tagRels).Error; err == nil {
+		for _, rel := range tagRels {
+			tagIds = append(tagIds, rel.TagId)
+		}
+	}
+
+	return &dto.GoodsInfoResp{
+		GoodsId:       goods.Id,
+		GoodsName:     goods.Name,
+		CategoryId:    goods.CategoryId,
+		BrandId:       goods.BrandId,
+		SupplierId:    goods.SupplierId,
+		Price:         goods.Price,
+		OriginalPrice: goods.OriginalPrice,
+		Stock:         goods.Stock,
+		Sort:          goods.Sort,
+		Status:        fmt.Sprintf("%d", goods.Status),
+		Description:   goods.Description,
+		CoverImg:      mainImage.Url,
+		TagIds:        tagIds,
+	}, nil
+}
+
+// UpdateGoods 更新商品
+func (s *GoodsService) UpdateGoods(req *dto.GoodsUpdateReq) error {
+	goods := &shop.GoodsDO{Id: req.GoodsId}
+	if err := goods.First(); err != nil {
+		return fmt.Errorf("商品不存在")
+	}
+
+	// 开启事务
+	tx := db.DB.WnAdmin.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// 更新商品基本信息
+	goods.Name = req.GoodsName
+	goods.CategoryId = req.CategoryId
+	goods.BrandId = req.BrandId
+	goods.SupplierId = req.SupplierId
+	goods.Price = req.Price
+	goods.OriginalPrice = req.OriginalPrice
+	goods.Stock = req.Stock
+	goods.Sort = req.Sort
+	goods.Description = req.Description
+	status, _ := strconv.ParseInt(req.Status, 10, 8)
+	goods.Status = int8(status)
+
+	if err := tx.Save(goods).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("更新商品失败: %v", err)
+	}
+
+	// 更新商品主图
+	if req.CoverImg != "" {
+		// 删除旧的主图
+		if err := tx.Where("goods_id = ? AND is_main = ?", goods.Id, 1).Delete(&shop.GoodsImageDO{}).Error; err != nil {
+			tx.Rollback()
+			return fmt.Errorf("删除旧主图失败: %v", err)
+		}
+
+		// 添加新的主图
+		mainImage := &shop.GoodsImageDO{
+			GoodsId:    goods.Id,
+			IsMain:     1,
+			Url:        req.CoverImg,
+			Type:       1,
+			Sort:       0,
+			CreateTime: time.Now(),
+			UpdateTime: time.Now(),
+		}
+		if err := tx.Create(mainImage).Error; err != nil {
+			tx.Rollback()
+			return fmt.Errorf("添加主图失败: %v", err)
+		}
+	}
+
+	// 更新标签关联
+	if len(req.TagIds) > 0 {
+		// 删除旧的标签关联
+		if err := tx.Where("goods_id = ?", goods.Id).Delete(&shop.ShopGoodsTagRel{}).Error; err != nil {
+			tx.Rollback()
+			return fmt.Errorf("删除旧标签失败: %v", err)
+		}
+
+		// 添加新的标签关联
+		for _, tagId := range req.TagIds {
+			rel := &shop.ShopGoodsTagRel{
+				GoodsId:    goods.Id,
+				TagId:      tagId,
+				CreateTime: time.Now(),
+			}
+			if err := tx.Create(rel).Error; err != nil {
+				tx.Rollback()
+				return fmt.Errorf("添加标签关联失败: %v", err)
+			}
+		}
+	}
+
+	return tx.Commit().Error
 }

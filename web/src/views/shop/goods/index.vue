@@ -1,12 +1,6 @@
 <template>
   <div class="app-container">
-    <!-- 温馨提示 -->
-    <el-alert
-      title="温馨提示: 1.新增商品时可选统一规格或者多规格，满足商品不同销售层次场景；2.商品销售状态分为销售中且库存足够时才可下单购买"
-      type="info"
-      :closable="true"
-      show-icon
-    />
+ 
 
     <!-- 搜索区域 -->
     <el-card class="filter-container">
@@ -176,18 +170,38 @@
       v-model:limit="queryParams.pageSize"
       @pagination="getList"
     />
+
+    <!-- 使用商品表单组件 -->
+    <goods-form
+      v-model:visible="dialogVisible"
+      :type="dialogType"
+      :data="formData"
+      :category-options="categoryOptions"
+      :brand-options="brandOptions"
+      :supplier-options="supplierOptions"
+      :tag-options="tagOptions"
+      :upload-url="uploadUrl"
+      @success="handleFormSuccess"
+    />
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { getGoodsList, deleteGoods, updateGoodsStatus } from '@/api/shop/goods'
+import { 
+  getGoodsList, 
+  deleteGoods, 
+  updateGoodsStatus, 
+  getGoodsInfo,
+  updateGoods
+} from '@/api/shop/goods'
 import { getCategoryList } from '@/api/shop/category'
 import { getBrandList } from '@/api/shop/brand'
 import { getTagList } from '@/api/shop/tag'
 import { getSupplierList } from '@/api/shop/supplier'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowDown } from '@element-plus/icons-vue'
+import GoodsForm from './components/GoodsForm.vue'
 
 // 查询参数
 const queryParams = ref({
@@ -212,6 +226,9 @@ const categoryOptions = ref([])
 const supplierOptions = ref([])
 const brandOptions = ref([])
 const tagOptions = ref([])
+
+// 添加上传地址配置
+const uploadUrl = ref(import.meta.env.VITE_API_URL + '/common/upload') // 根据实际的上传接口配置
 
 // 获取所有下拉选项数据
 const getOptions = async () => {
@@ -256,7 +273,10 @@ const formatGoodsData = (list) => {
     return {
       goodsId: item.goodsId,
       goodsName: item.name,
-      coverImg: '', // 暂时不显示图片
+      categoryId: item.categoryId,
+      brandId: item.brandId,
+      supplierId: item.supplierId,
+      coverImg: item.coverImg || '', // 从主图中获取
       price: item.price,
       originalPrice: item.originalPrice,
       sales: item.sales,
@@ -264,7 +284,9 @@ const formatGoodsData = (list) => {
       sort: item.sort,
       status: item.status.toString(),
       type: item.type === 1 ? '普通商品' : '虚拟商品',
-      source: '自营'
+      source: '自营',
+      description: item.description || '', // 确保有值
+      tagIds: item.tagIds || []
     }
   })
 }
@@ -353,8 +375,33 @@ const handleAdd = () => {
 }
 
 // 编辑
-const handleEdit = (row) => {
-  // TODO: 跳转到编辑页面
+const handleEdit = async (row) => {
+  dialogType.value = 'edit'
+  try {
+    // 通过详情接口获取完整的商品信息
+    const res = await getGoodsInfo(row.goodsId)
+    console.log('商品详情数据:', res)
+    
+    formData.value = {
+      goodsId: res.goodsId,
+      goodsName: res.goodsName,
+      categoryId: res.categoryId,
+      brandId: res.brandId,
+      supplierId: res.supplierId,
+      price: res.price,
+      originalPrice: res.originalPrice,
+      stock: res.stock,
+      sort: res.sort,
+      status: res.status,
+      description: res.description,
+      coverImg: res.coverImg,
+      tagIds: res.tagIds || []
+    }
+    dialogVisible.value = true
+  } catch (error) {
+    console.error('获取商品详情失败:', error)
+    ElMessage.error('获取商品详情失败')
+  }
 }
 
 // 预览
@@ -375,6 +422,16 @@ const handleDelete = (row) => {
       console.error('删除失败:', error)
     }
   })
+}
+
+// 编辑相关的响应式变量
+const dialogVisible = ref(false)
+const dialogType = ref('add')
+const formData = ref({})
+
+// 表单提交成功
+const handleFormSuccess = () => {
+  getList() // 刷新列表
 }
 
 onMounted(() => {
