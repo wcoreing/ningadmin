@@ -1,6 +1,7 @@
 package shop
 
 import (
+	"fmt"
 	"wnadmin/app/common/response"
 	"wnadmin/app/common/utils"
 	"wnadmin/app/model/dto"
@@ -35,10 +36,17 @@ func NewGoodsController() *GoodsController {
 // @Router /shop/goods/list [get]
 func (c *GoodsController) List(ctx *gin.Context) {
 	var query dto.GoodsListReq
+	// 打印原始请求参数
+	fmt.Printf("原始请求参数: %+v\n", ctx.Request.URL.Query())
+
+	// 使用 ShouldBindQuery 替代 ShouldBind
 	if err := ctx.ShouldBindQuery(&query); err != nil {
 		response.FailWithMessage(201, "参数错误: "+err.Error(), ctx)
 		return
 	}
+
+	// 打印绑定后的参数
+	fmt.Printf("绑定后的参数: %+v\n", query)
 
 	// 设置默认值
 	if query.PageNum <= 0 {
@@ -53,11 +61,7 @@ func (c *GoodsController) List(ctx *gin.Context) {
 		response.FailWithMessage(201, "获取商品列表失败: "+err.Error(), ctx)
 		return
 	}
-
-	response.OkWithDetailed(gin.H{
-		"total": result.Total,
-		"list":  result.List,
-	}, "获取成功", ctx)
+	response.OkWithData(result, ctx)
 }
 
 // Delete 删除商品

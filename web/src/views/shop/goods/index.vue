@@ -12,27 +12,71 @@
     <el-card class="filter-container">
       <el-form :inline="true" :model="queryParams" class="demo-form-inline">
         <el-form-item label="商品分类">
-          <el-select v-model="queryParams.categoryId" placeholder="请选择商品分类" clearable>
-            <el-option label="请选择商品分类" value="" />
+          <el-select 
+            v-model="queryParams.categoryId" 
+            placeholder="请选择商品分类" 
+            clearable
+            class="filter-select"
+          >
+            <el-option
+              v-for="item in categoryOptions"
+              :key="item.id"
+              :label="item.name"
+              :value="item.id"
+            />
           </el-select>
         </el-form-item>
         <el-form-item label="供应商">
-          <el-select v-model="queryParams.supplierId" placeholder="请选择" clearable>
-            <el-option label="请选择" value="" />
+          <el-select 
+            v-model="queryParams.supplierId" 
+            placeholder="请选择供应商" 
+            clearable
+            class="filter-select"
+          >
+            <el-option
+              v-for="item in supplierOptions"
+              :key="item.id"
+              :label="item.name"
+              :value="item.id"
+            />
           </el-select>
         </el-form-item>
         <el-form-item label="商品品牌">
-          <el-select v-model="queryParams.brandId" placeholder="请选择商品品牌" clearable>
-            <el-option label="请选择商品品牌" value="" />
+          <el-select 
+            v-model="queryParams.brandId" 
+            placeholder="请选择商品品牌" 
+            clearable
+            class="filter-select"
+          >
+            <el-option
+              v-for="item in brandOptions"
+              :key="item.id"
+              :label="item.name"
+              :value="item.id"
+            />
           </el-select>
         </el-form-item>
         <el-form-item label="商品标签">
-          <el-select v-model="queryParams.tagId" placeholder="选择商品标签" clearable>
-            <el-option label="选择商品标签" value="" />
+          <el-select 
+            v-model="queryParams.tagId" 
+            placeholder="选择商品标签" 
+            clearable
+            class="filter-select"
+          >
+            <el-option
+              v-for="item in tagOptions"
+              :key="item.id"
+              :label="item.name"
+              :value="item.id"
+            />
           </el-select>
         </el-form-item>
         <el-form-item label="商品搜索">
-          <el-input v-model="queryParams.goodsName" placeholder="请输入商品名称,关键字,ID" />
+          <el-input 
+            v-model="queryParams.name" 
+            placeholder="请输入商品名称,关键字,ID"
+            class="filter-input"
+          />
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleQuery">查询</el-button>
@@ -138,6 +182,10 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { getGoodsList, deleteGoods, updateGoodsStatus } from '@/api/shop/goods'
+import { getCategoryList } from '@/api/shop/category'
+import { getBrandList } from '@/api/shop/brand'
+import { getTagList } from '@/api/shop/tag'
+import { getSupplierList } from '@/api/shop/supplier'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowDown } from '@element-plus/icons-vue'
 
@@ -145,11 +193,11 @@ import { ArrowDown } from '@element-plus/icons-vue'
 const queryParams = ref({
   pageNum: 1,
   pageSize: 10,
-  goodsName: '',
+  name: '',
   categoryId: '',
-  supplierId: '',
   brandId: '',
   tagId: '',
+  supplierId: '',
   status: ''
 })
 
@@ -159,13 +207,109 @@ const goodsList = ref([])
 const activeStatus = ref('')
 const selectedRows = ref([])
 
+// 添加下拉选项数据
+const categoryOptions = ref([])
+const supplierOptions = ref([])
+const brandOptions = ref([])
+const tagOptions = ref([])
+
+// 获取所有下拉选项数据
+const getOptions = async () => {
+  try {
+    const [categoryRes, supplierRes, brandRes, tagRes] = await Promise.all([
+      getCategoryList(),
+      getSupplierList(),
+      getBrandList(),
+      getTagList()
+    ])
+    
+    // 添加调试日志
+    console.log('分类数据:', categoryRes)
+    console.log('供应商数据:', supplierRes)
+    console.log('品牌数据:', brandRes)
+    console.log('标签数据:', tagRes)
+    
+    // 直接使用返回的数据，不需要 .data
+    categoryOptions.value = categoryRes || []
+    supplierOptions.value = supplierRes || []
+    brandOptions.value = brandRes || []
+    tagOptions.value = tagRes || []
+  } catch (error) {
+    console.error('获取选项数据失败:', error)
+    // 出错时设置为空数组
+    categoryOptions.value = []
+    supplierOptions.value = []
+    brandOptions.value = []
+    tagOptions.value = []
+  }
+}
+
+// 商品列表数据结构调整
+const formatGoodsData = (list) => {
+  if (!list || !Array.isArray(list)) {
+    console.warn('商品数据格式不正确:', list)
+    return []
+  }
+  
+  return list.map(item => {
+    console.log('格式化单个商品数据:', item) // 添加调试日志
+    return {
+      goodsId: item.goodsId,
+      goodsName: item.name,
+      coverImg: '', // 暂时不显示图片
+      price: item.price,
+      originalPrice: item.originalPrice,
+      sales: item.sales,
+      stock: item.stock,
+      sort: item.sort,
+      status: item.status.toString(),
+      type: item.type === 1 ? '普通商品' : '虚拟商品',
+      source: '自营'
+    }
+  })
+}
+
 // 获取商品列表
 const getList = async () => {
   loading.value = true
   try {
-    const res = await getGoodsList(queryParams.value)
-    goodsList.value = res.data.list
-    total.value = res.data.total
+    // 构建查询参数
+    const params = {
+      pageNum: queryParams.value.pageNum,
+      pageSize: queryParams.value.pageSize,
+      name: queryParams.value.name,
+      categoryId: queryParams.value.categoryId || undefined,
+      brandId: queryParams.value.brandId || undefined,
+      tagId: queryParams.value.tagId || undefined,
+      supplierId: queryParams.value.supplierId || undefined,
+      status: queryParams.value.status || undefined
+    }
+    
+    // 移除值为undefined的参数
+    Object.keys(params).forEach(key => {
+      if (params[key] === undefined || params[key] === '') {
+        delete params[key]
+      }
+    })
+
+    console.log('发送查询参数:', params) // 调试日志
+    const res = await getGoodsList(params)
+    console.log('商品列表接口返回数据:', res)
+    
+    // 确保清空旧数据
+    goodsList.value = []
+    
+    // 处理返回的数据
+    if (res && res.list) {
+      goodsList.value = formatGoodsData(res.list)
+      total.value = res.total
+    } else {
+      console.warn('返回数据格式不正确:', res)
+    }
+  } catch (error) {
+    console.error('获取商品列表失败:', error)
+    goodsList.value = []
+    total.value = 0
   } finally {
     loading.value = false
   }
@@ -193,6 +337,7 @@ const handleStatusToggle = async (row) => {
     ElMessage.success('状态更新成功')
   } catch (error) {
     row.status = row.status === '0' ? '1' : '0'
+    ElMessage.error('状态更新失败')
     console.error('状态更新失败:', error)
   }
 }
@@ -234,6 +379,7 @@ const handleDelete = (row) => {
 
 onMounted(() => {
   getList()
+  getOptions() // 获取所有下拉选项数据
 })
 </script>
 
@@ -243,6 +389,21 @@ onMounted(() => {
 
   .filter-container {
     margin: 20px 0;
+
+    // 设置下拉框和输入框的宽度
+    :deep(.filter-select) {
+      width: 200px;  // 调整下拉框宽度
+    }
+
+    :deep(.filter-input) {
+      width: 250px;  // 调整输入框宽度
+    }
+
+    // 调整表单项间距
+    :deep(.el-form-item) {
+      margin-right: 20px;
+      margin-bottom: 18px;
+    }
   }
 
   .status-tabs {

@@ -1,6 +1,7 @@
 package shop
 
 import (
+	"fmt"
 	"time"
 	"wnadmin/app/model/dto"
 	"wnadmin/app/provider/db"
@@ -12,6 +13,8 @@ import (
 type GoodsDO struct {
 	GoodsId       int64     `json:"goodsId" gorm:"column:id;primaryKey;comment:商品ID"`
 	CategoryId    int64     `json:"categoryId" gorm:"column:category_id;comment:分类ID"`
+	SupplierId    int64     `json:"supplierId" gorm:"column:supplier_id;comment:供应商ID"`
+	BrandId       int64     `json:"brandId" gorm:"column:brand_id;comment:品牌ID"`
 	Type          int8      `json:"type" gorm:"column:type;default:1;comment:商品类型1普通商品2虚拟商品"`
 	Name          string    `json:"name" gorm:"column:name;comment:商品名称"`
 	Description   string    `json:"description" gorm:"column:description;comment:商品描述"`
@@ -41,7 +44,26 @@ func (GoodsDO) TableName() string {
 
 // Query 获取查询构建器
 func (g *GoodsDO) Query() *gorm.DB {
-	return db.DB.WnAdmin.Model(g).Where("is_delete = ?", 0)
+	query := db.DB.WnAdmin.Model(g).Where("is_delete = ?", 0)
+
+	// 添加调试日志
+	fmt.Printf("构建查询条件: %+v\n", g)
+
+	// 根据结构体中的非零值构建查询条件
+	if g.CategoryId > 0 {
+		query = query.Where("category_id = ?", g.CategoryId)
+	}
+	if g.SupplierId > 0 {
+		query = query.Where("supplier_id = ?", g.SupplierId)
+	}
+	if g.BrandId > 0 {
+		query = query.Where("brand_id = ?", g.BrandId)
+	}
+	if g.Status >= 0 && g.Status != 0 {
+		query = query.Where("status = ?", g.Status)
+	}
+
+	return query
 }
 
 // Create 创建商品
@@ -79,11 +101,15 @@ func (g *GoodsDO) GetGoodsList(query *dto.GoodsListReq) ([]GoodsDO, int64, error
 	var goods []GoodsDO
 	var total int64
 
-	q := g.Query()
+	q := db.DB.WnAdmin.Model(g).Where("is_delete = ?", 0)
 
-	if query.GoodsName != "" {
-		q = q.Where("name LIKE ?", "%"+query.GoodsName+"%")
+	// 标签查询
+	if query.TagId > 0 {
+		q = q.Joins("JOIN shop_goods_tag_relation rel ON rel.goods_id = shop_goods.id").
+			Where("rel.tag_id = ?", query.TagId)
 	}
+
+	// 其他查询条件
 	if query.CategoryId > 0 {
 		q = q.Where("category_id = ?", query.CategoryId)
 	}
@@ -93,11 +119,11 @@ func (g *GoodsDO) GetGoodsList(query *dto.GoodsListReq) ([]GoodsDO, int64, error
 	if query.BrandId > 0 {
 		q = q.Where("brand_id = ?", query.BrandId)
 	}
-	if query.TagId > 0 {
-		q = q.Where("tag_id = ?", query.TagId)
-	}
 	if query.Status != "" {
 		q = q.Where("status = ?", query.Status)
+	}
+	if query.Name != "" {
+		q = q.Where("name LIKE ?", "%"+query.Name+"%")
 	}
 
 	// 统计总数
