@@ -18,17 +18,17 @@
           active-text-color="#409EFF"
         >
           <!-- 遍历菜单数据生成菜单项 -->
-          <template v-for="menu in userStore.menuList" :key="menu.path">
+          <template v-for="menu in userStore.menuList" :key="menu.id">
             <!-- 有子菜单 -->
-            <el-sub-menu v-if="menu.children && menu.children.length" :index="menu.path">
+            <el-sub-menu v-if="menu.children && menu.children.length" :index="String(menu.id)">
               <template #title>
                 <el-icon><component :is="menu.icon" /></el-icon>
                 <span>{{ menu.name }}</span>
               </template>
               <el-menu-item 
                 v-for="child in menu.children" 
-                :key="child.path"
-                :index="`${child.path}`"
+                :key="child.id"
+                :index="child.path"
               >
                 {{ child.name }}
               </el-menu-item>

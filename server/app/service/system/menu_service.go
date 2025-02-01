@@ -205,13 +205,13 @@ func contains(slice []int64, val int64) bool {
 }
 
 // GetRoleMenuTree 获取角色的菜单树
-func (s *MenuService) GetRoleMenuTree(roleID int64) ([]dto.MenuTree, error) {
+func (s *MenuService) GetRoleMenuTree(roleID int64, permissionType string) ([]dto.MenuTree, error) {
 	// 获取角色的权限菜单
 	var menus []SystemDB.MenuDO
 	err := db.DB.WnAdmin.Table("sys_permission").
 		Joins("LEFT JOIN sys_role_permission ON sys_permission.permission_id = sys_role_permission.permission_id").
-		Where("sys_role_permission.role_id = ? AND sys_permission.del_flag = ? AND sys_permission.status = ?",
-			roleID, "0", "0").
+		Where(" sys_permission.permission_type = ? AND sys_role_permission.role_id = ? AND sys_permission.del_flag = ? AND sys_permission.status = ?",
+			permissionType, roleID, "0", "0").
 		Order("sys_permission.sort").
 		Find(&menus).Error
 	if err != nil {

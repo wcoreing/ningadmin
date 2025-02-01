@@ -116,7 +116,7 @@ func (s *AuthService) GetUserMenuTree(userID int64) ([]dto.MenuTree, error) {
 	}
 
 	// 获取角色的权限菜单树
-	return s.menuService.GetRoleMenuTree(role.RoleID)
+	return s.menuService.GetRoleMenuTree(role.RoleID, "menu")
 }
 
 // Logout 用户登出
