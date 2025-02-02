@@ -162,7 +162,7 @@ func (c *GoodsController) Update(ctx *gin.Context) {
 		response.FailWithMessage(201, "参数错误: "+err.Error(), ctx)
 		return
 	}
-
+	fmt.Printf("更新请求: %+v\n", req)
 	// 更新商品
 	if err := c.goodsService.UpdateGoods(&req); err != nil {
 		response.FailWithMessage(201, err.Error(), ctx)
@@ -170,4 +170,28 @@ func (c *GoodsController) Update(ctx *gin.Context) {
 	}
 
 	response.OkWithMessage("更新成功", ctx)
+}
+
+// Create 创建商品
+// @Summary 创建商品
+// @Description 创建商品信息
+// @Tags 商品管理
+// @Accept json
+// @Produce json
+// @Param data body dto.GoodsUpdateReq true "商品信息"
+// @Success 200 {object} response.Response "成功"
+// @Router /shop/goods/create [post]
+func (c *GoodsController) Create(ctx *gin.Context) {
+	var req dto.GoodsUpdateReq
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		response.FailWithMessage(201, "参数错误", ctx)
+		return
+	}
+
+	if err := c.goodsService.CreateGoods(&req); err != nil {
+		response.FailWithMessage(201, err.Error(), ctx)
+		return
+	}
+
+	response.OkWithMessage("创建成功", ctx)
 }

@@ -2,39 +2,46 @@ package shop
 
 import (
 	"fmt"
-	"time"
 	"wnadmin/app/model/dto"
 	"wnadmin/app/provider/db"
+
+	"time"
 
 	"gorm.io/gorm"
 )
 
-// GoodsDO 商品信息
+// GoodsDO 商品表
 type GoodsDO struct {
-	Id            int64     `json:"goodsId" gorm:"column:id;primaryKey;comment:商品ID"`
-	CategoryId    int64     `json:"categoryId" gorm:"column:category_id;comment:分类ID"`
-	SupplierId    int64     `json:"supplierId" gorm:"column:supplier_id;comment:供应商ID"`
-	BrandId       int64     `json:"brandId" gorm:"column:brand_id;comment:品牌ID"`
-	Type          int8      `json:"type" gorm:"column:type;default:1;comment:商品类型1普通商品2虚拟商品"`
-	Name          string    `json:"name" gorm:"column:name;comment:商品名称"`
-	Description   string    `json:"description" gorm:"column:description;comment:商品描述"`
-	Detail        string    `json:"detail" gorm:"column:detail;comment:商品详情"`
-	Price         float64   `json:"price" gorm:"column:price;comment:售价"`
-	OriginalPrice float64   `json:"originalPrice" gorm:"column:original_price;comment:原价"`
-	CostPrice     float64   `json:"costPrice" gorm:"column:cost_price;comment:成本价"`
-	Stock         int       `json:"stock" gorm:"column:stock;default:0;comment:库存"`
-	WarnStock     int       `json:"warnStock" gorm:"column:warn_stock;default:0;comment:库存预警值"`
-	Unit          string    `json:"unit" gorm:"column:unit;comment:单位"`
-	Weight        float64   `json:"weight" gorm:"column:weight;default:0;comment:重量(kg)"`
-	Volume        float64   `json:"volume" gorm:"column:volume;default:0;comment:体积(m³)"`
-	Sales         int       `json:"sales" gorm:"column:sales;default:0;comment:销量"`
-	VirtualSales  int       `json:"virtualSales" gorm:"column:virtual_sales;default:0;comment:虚拟销量"`
-	SpecType      int8      `json:"specType" gorm:"column:spec_type;default:1;comment:规格类型：1-单规格 2-多规格"`
-	Status        int8      `json:"status" gorm:"column:status;default:0;comment:状态(0:下架 1:上架)"`
-	Sort          int       `json:"sort" gorm:"column:sort;default:0;comment:排序"`
-	IsDelete      int8      `json:"-" gorm:"column:is_delete;default:0;comment:是否删除"`
-	CreateTime    time.Time `json:"createTime" gorm:"column:create_time;autoCreateTime;comment:创建时间"`
-	UpdateTime    time.Time `json:"updateTime" gorm:"column:update_time;autoUpdateTime;comment:更新时间"`
+	Id            int64     `gorm:"column:id" json:"id"`                        // 商品ID
+	Name          string    `gorm:"column:name" json:"name"`                    // 商品名称
+	CategoryId    int64     `gorm:"column:category_id" json:"categoryId"`       // 分类ID
+	BrandId       int64     `gorm:"column:brand_id" json:"brandId"`             // 品牌ID
+	SupplierId    int64     `gorm:"column:supplier_id" json:"supplierId"`       // 供应商ID
+	Type          int8      `gorm:"column:type" json:"type"`                    // 商品类型1普通商品2虚拟商品
+	Price         float64   `gorm:"column:price" json:"price"`                  // 销售价
+	OriginalPrice float64   `gorm:"column:original_price" json:"originalPrice"` // 市场价
+	CostPrice     float64   `gorm:"column:cost_price" json:"costPrice"`         // 成本价
+	Stock         int       `gorm:"column:stock" json:"stock"`                  // 库存
+	WarnStock     int       `gorm:"column:warn_stock" json:"warnStock"`         // 库存预警值
+	Unit          string    `gorm:"column:unit" json:"unit"`                    // 单位
+	Weight        float64   `gorm:"column:weight" json:"weight"`                // 重量(kg)
+	Volume        float64   `gorm:"column:volume" json:"volume"`                // 体积(m³)
+	Sales         int       `gorm:"column:sales" json:"sales"`                  // 销量
+	VirtualSales  int       `gorm:"column:virtual_sales" json:"virtualSales"`   // 虚拟销量
+	Sort          int       `gorm:"column:sort" json:"sort"`                    // 排序
+	Status        int8      `gorm:"column:status" json:"status"`                // 状态
+	Description   string    `gorm:"column:description" json:"description"`      // 描述
+	Detail        string    `gorm:"column:detail" json:"detail"`                // 商品详情
+	SpecType      int8      `gorm:"column:spec_type" json:"specType"`           // 规格类型
+	IsDelete      int8      `gorm:"column:is_delete" json:"isDelete"`           // 是否删除
+	CreateTime    time.Time `gorm:"column:create_time" json:"createTime"`       // 创建时间
+	UpdateTime    time.Time `gorm:"column:update_time" json:"updateTime"`       // 更新时间
+
+	// 关联字段，不映射到数据库
+	Images     []*GoodsImageDO  `gorm:"-" json:"images"`     // 商品图片列表
+	SpecGroups []*ShopGoodsSpec `gorm:"-" json:"specGroups"` // 规格组列表
+	SkuList    []*ShopGoodsSku  `gorm:"-" json:"skuList"`    // SKU列表
+	TagIds     []int64          `gorm:"-" json:"tagIds"`     // 标签ID列表
 }
 
 // TableName 表名
@@ -78,7 +85,7 @@ func (g *GoodsDO) Update() error {
 
 // Delete 删除商品
 func (g *GoodsDO) Delete() error {
-	return g.Query().Where("goods_id = ?", g.Id).Update("is_delete", 1).Error
+	return g.Query().Where("id = ?", g.Id).Update("is_delete", 1).Error
 }
 
 // First 获取单个商品
@@ -93,7 +100,7 @@ func (g *GoodsDO) Find(dest interface{}) error {
 
 // UpdateStatus 更新商品状态
 func (g *GoodsDO) UpdateStatus() error {
-	return g.Query().Where("goods_id = ?", g.Id).Update("status", g.Status).Error
+	return g.Query().Where("id = ?", g.Id).Update("status", g.Status).Error
 }
 
 // GetGoodsList 获取商品列表

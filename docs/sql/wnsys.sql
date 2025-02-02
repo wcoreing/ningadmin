@@ -11,7 +11,7 @@
  Target Server Version : 80012 (8.0.12)
  File Encoding         : 65001
 
- Date: 01/02/2025 18:24:05
+ Date: 02/02/2025 17:37:49
 */
 
 SET NAMES utf8mb4;
@@ -334,7 +334,7 @@ CREATE TABLE `shop_goods_image`  (
   `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_goods_id`(`goods_id` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 81 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '商品图片表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 94 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '商品图片表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Table structure for shop_goods_sku
@@ -344,7 +344,7 @@ CREATE TABLE `shop_goods_sku`  (
   `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'SKU ID',
   `goods_id` int(10) UNSIGNED NOT NULL COMMENT '商品ID',
   `sku_code` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT 'sku编码',
-  `spec_value_str` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '规格值字符串(如:红色,XL)',
+  `specs_json` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '规格值字符串(如:红色,XL)',
   `image` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT '' COMMENT 'SKU图片',
   `price` decimal(10, 2) UNSIGNED NOT NULL COMMENT '售价',
   `original_price` decimal(10, 2) UNSIGNED NOT NULL COMMENT '原价',
@@ -370,14 +370,30 @@ CREATE TABLE `shop_goods_spec`  (
   `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '规格ID',
   `goods_id` bigint(20) NOT NULL COMMENT '商品ID',
   `name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '规格名称',
-  `value` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '规格值',
   `sort` int(11) NOT NULL DEFAULT 0 COMMENT '排序',
   `is_delete` tinyint(4) NOT NULL DEFAULT 0 COMMENT '是否删除',
   `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_goods_id`(`goods_id` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 191 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '商品规格表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 193 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '商品规格表' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Table structure for shop_goods_spec_value
+-- ----------------------------
+DROP TABLE IF EXISTS `shop_goods_spec_value`;
+CREATE TABLE `shop_goods_spec_value`  (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `goods_id` bigint(20) NOT NULL COMMENT '商品ID',
+  `spec_id` bigint(20) NOT NULL COMMENT '规格组ID',
+  `value` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '规格值',
+  `sort` int(11) NULL DEFAULT 0 COMMENT '排序',
+  `created_at` datetime NULL DEFAULT NULL,
+  `updated_at` datetime NULL DEFAULT NULL,
+  PRIMARY KEY (`id`) USING BTREE,
+  INDEX `idx_goods_id`(`goods_id` ASC) USING BTREE,
+  INDEX `idx_spec_group_id`(`spec_id` ASC) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 6 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '商品规格值' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Table structure for shop_goods_tag
@@ -404,7 +420,7 @@ CREATE TABLE `shop_goods_tag_relation`  (
   `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE INDEX `uk_goods_tag`(`goods_id` ASC, `tag_id` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 81 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '商品标签关联表' ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 104 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '商品标签关联表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Table structure for shop_order
@@ -597,8 +613,8 @@ CREATE TABLE `shop_user`  (
   `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE INDEX `uk_username`(`username` ASC) USING BTREE,
-  UNIQUE INDEX `uk_email`(`email` ASC) USING BTREE,
   UNIQUE INDEX `uk_phone`(`phone` ASC) USING BTREE,
+  UNIQUE INDEX `uk_email`(`email` ASC) USING BTREE,
   INDEX `idx_level`(`level` ASC) USING BTREE,
   INDEX `idx_points`(`points` ASC) USING BTREE
 ) ENGINE = InnoDB AUTO_INCREMENT = 2 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '用户表' ROW_FORMAT = Dynamic;

@@ -96,7 +96,6 @@
     <!-- 操作按钮 -->
     <div class="table-operations">
       <el-button type="primary" @click="handleAdd">添加商品</el-button>
-      <el-button type="success">商品采集</el-button>
       <el-button>批量下架</el-button>
       <el-button>导出</el-button>
       <el-button>批量设置</el-button>
@@ -240,20 +239,13 @@ const getOptions = async () => {
       getTagList()
     ])
     
-    // 添加调试日志
-    console.log('分类数据:', categoryRes)
-    console.log('供应商数据:', supplierRes)
-    console.log('品牌数据:', brandRes)
-    console.log('标签数据:', tagRes)
-    
-    // 直接使用返回的数据，不需要 .data
+    // 分类数据已经是树形结构，直接使用
     categoryOptions.value = categoryRes || []
     supplierOptions.value = supplierRes || []
     brandOptions.value = brandRes || []
     tagOptions.value = tagRes || []
   } catch (error) {
     console.error('获取选项数据失败:', error)
-    // 出错时设置为空数组
     categoryOptions.value = []
     supplierOptions.value = []
     brandOptions.value = []
@@ -371,7 +363,23 @@ const handleSelectionChange = (rows) => {
 
 // 新增
 const handleAdd = () => {
-  // TODO: 跳转到新增页面
+  dialogType.value = 'add'
+  formData.value = {
+    goodsId: undefined,
+    goodsName: '',
+    categoryId: undefined,
+    brandId: undefined,
+    supplierId: undefined,
+    price: 0,
+    originalPrice: 0,
+    stock: 0,
+    sort: 0,
+    status: '0',
+    description: '',
+    coverImg: '',
+    tagIds: []
+  }
+  dialogVisible.value = true
 }
 
 // 编辑

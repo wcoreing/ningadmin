@@ -6,19 +6,20 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// InitShopRoutes 初始化商品相关路由
-func InitShopRoutes(apiGroup *gin.RouterGroup) {
+// RegisterShopRoutes 注册商城相关路由
+func RegisterShopRoutes(apiGroup *gin.RouterGroup) {
+	// 商品管理路由组
+	goodsController := &shop.GoodsController{}
 	shopGroup := apiGroup.Group("/shop")
 	{
-		// 商品管理
-		goodsController := shop.NewGoodsController()
 		goodsGroup := shopGroup.Group("/goods")
 		{
-			goodsGroup.GET("/list", goodsController.List)
-			goodsGroup.DELETE("/delete/:id", goodsController.Delete)
-			goodsGroup.PUT("/status", goodsController.UpdateStatus)
-			goodsGroup.GET("/info/:id", goodsController.GetInfo)
-			goodsGroup.PUT("/update", goodsController.Update)
+			goodsGroup.POST("/create", goodsController.Create)       // 创建商品
+			goodsGroup.GET("/list", goodsController.List)            // 商品列表
+			goodsGroup.GET("/info/:id", goodsController.GetInfo)     // 商品详情
+			goodsGroup.PUT("/update", goodsController.Update)        // 更新商品
+			goodsGroup.DELETE("/delete/:id", goodsController.Delete) // 删除商品
+			goodsGroup.PUT("/status", goodsController.UpdateStatus)  // 更新状态
 		}
 
 		// 商品分类

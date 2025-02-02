@@ -28,7 +28,7 @@ func (s *CategoryService) GetCategoryList() ([]dto.CategoryDTO, error) {
 		result = append(result, dto.CategoryDTO{
 			ID:       category.ID,
 			Name:     category.Name,
-			ParentID: category.ParentID,
+			ParentID: category.ParentId,
 			Level:    category.Level,
 			Sort:     category.Sort,
 		})

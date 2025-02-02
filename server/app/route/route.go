@@ -114,14 +114,13 @@ func Handle(engine *gin.Engine) {
 			formDataController := form.NewFormDataController()
 			formDataGroup := formGroup.Group("/data")
 			{
-
-				formDataGroup.GET("/list", formDataController.GetFormDataList)  // 获取表单数据列表
-				formDataGroup.GET("/:id", formDataController.GetFormDataDetail) // 获取表单数据详情
-				formDataGroup.DELETE("/:id", formDataController.DeleteFormData) // 删除表单数据
+				formDataGroup.GET("/list", formDataController.GetFormDataList)
+				formDataGroup.GET("/:id", formDataController.GetFormDataDetail)
+				formDataGroup.DELETE("/:id", formDataController.DeleteFormData)
 			}
-		}
 
-		// 初始化商品相关路由
-		InitShopRoutes(apiGroup)
+			// 注册商城相关路由
+			RegisterShopRoutes(apiGroup)
+		}
 	}
 }
