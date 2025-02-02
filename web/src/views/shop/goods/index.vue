@@ -162,12 +162,15 @@
     </el-table>
 
     <!-- 分页 -->
-    <pagination
+    <el-pagination
       v-show="total > 0"
+      v-model:current-page="queryParams.pageNum"
+      v-model:page-size="queryParams.pageSize"
       :total="total"
-      v-model:page="queryParams.pageNum"
-      v-model:limit="queryParams.pageSize"
-      @pagination="getList"
+      :page-sizes="[10, 20, 30, 50]"
+      layout="total, sizes, prev, pager, next, jumper"
+      @size-change="handleSizeChange"
+      @current-change="handleCurrentChange"
     />
 
     <!-- 使用商品表单组件 -->
@@ -440,6 +443,17 @@ const formData = ref({})
 // 表单提交成功
 const handleFormSuccess = () => {
   getList() // 刷新列表
+}
+
+// 添加处理方法
+const handleSizeChange = (val) => {
+  queryParams.pageSize = val
+  getList()
+}
+
+const handleCurrentChange = (val) => {
+  queryParams.pageNum = val
+  getList()
 }
 
 onMounted(() => {

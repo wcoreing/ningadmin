@@ -108,8 +108,8 @@
 
           <el-form-item label="商品状态" prop="status">
             <el-radio-group v-model="formData.status">
-              <el-radio label="0">上架</el-radio>
-              <el-radio label="1">下架</el-radio>
+              <el-radio :label="'0'">上架</el-radio>
+              <el-radio :label="'1'">下架</el-radio>
             </el-radio-group>
           </el-form-item>
 
@@ -145,8 +145,8 @@
         <el-tab-pane label="规格设置" name="specs">
           <el-form-item label="规格设置">
             <el-radio-group v-model="formData.specType">
-              <el-radio :label="1">单规格</el-radio>
-              <el-radio :label="2">多规格</el-radio>
+              <el-radio :label="1" value="1">单规格</el-radio>
+              <el-radio :label="2" value="2">多规格</el-radio>
             </el-radio-group>
           </el-form-item>
           
@@ -239,7 +239,6 @@
 
     <template #footer>
       <el-button @click="handleClose">取 消</el-button>
-      <el-button @click="saveDraft">保存草稿</el-button>
       <el-button type="primary" @click="handleSubmit">确定保存</el-button>
     </template>
   </el-dialog>
@@ -253,6 +252,7 @@ import { Plus, Rank, Delete } from '@element-plus/icons-vue'
 import '@wangeditor/editor/dist/css/style.css'
 import { Editor, Toolbar } from '@wangeditor/editor-for-vue'
 import Draggable from 'vuedraggable'
+import { ElPagination } from 'element-plus'
 
 const props = defineProps({
   visible: {
@@ -446,29 +446,8 @@ const updateVisible = (value) => {
 }
 
 // 修改 activeTab 的处理
-const handleTabChange = async (tabName) => {
-  // 验证当前 tab 的数据
-  const currentTabFields = tabRules[activeTab.value] || []
-  if (currentTabFields.length > 0) {
-    try {
-      await formRef.value.validateFields(currentTabFields)
-      activeTab.value = tabName
-    } catch (error) {
-      ElMessageBox.confirm(
-        '当前标签页有未完成的必填项，是否继续切换？',
-        '提示',
-        {
-          confirmButtonText: '继续',
-          cancelButtonText: '取消',
-          type: 'warning'
-        }
-      ).then(() => {
-        activeTab.value = tabName
-      }).catch(() => {})
-    }
-  } else {
-    activeTab.value = tabName
-  }
+const handleTabChange = (tabName) => {
+  activeTab.value = tabName
 }
 
 // 修改提交表单方法
@@ -492,18 +471,12 @@ const handleSubmit = async () => {
       return
     }
     
-    // 添加草稿标记
-    const submitData = {
-      ...formData.value,
-      isDraft: false // 正式保存
-    }
-    
     try {
       if (props.type === 'add') {
-        await createGoods(submitData)
+        await createGoods(formData.value)
         ElMessage.success('添加成功')
       } else {
-        await updateGoods(submitData)
+        await updateGoods(formData.value)
         ElMessage.success('更新成功')
       }
       emit('success')
@@ -522,27 +495,6 @@ const handleSubmit = async () => {
         break
       }
     }
-  }
-}
-
-// 添加保存草稿方法
-const saveDraft = async () => {
-  try {
-    const draftData = {
-      ...formData.value,
-      isDraft: true // 标记为草稿
-    }
-    
-    if (props.type === 'add') {
-      await createGoods(draftData)
-      ElMessage.success('草稿保存成功')
-    } else {
-      await updateGoods(draftData)
-      ElMessage.success('草稿更新成功')
-    }
-  } catch (error) {
-    console.error('保存草稿失败:', error)
-    ElMessage.error('保存草稿失败')
   }
 }
 
