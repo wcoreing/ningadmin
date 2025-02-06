@@ -69,7 +69,19 @@
         </el-table-column>
         <el-table-column prop="routePath" label="路由路径" min-width="150" show-overflow-tooltip />
         <el-table-column prop="permission" label="权限标识" min-width="150" show-overflow-tooltip />
-        <el-table-column prop="sort" label="排序" width="80" align="center" />
+        <el-table-column label="排序" width="120" align="center">
+          <template #default="{ row }">
+            <el-input-number 
+              v-model="row.sort" 
+              :min="0" 
+              :max="999"
+              size="small"
+              controls-position="right"
+              @change="handleSortChange(row)"
+              style="width: 90px"
+            />
+          </template>
+        </el-table-column>
         <el-table-column prop="status" label="状态" width="100" align="center">
           <template #default="{ row }">
             <el-tag :type="row.status === '0' ? 'success' : 'danger'">
@@ -176,6 +188,7 @@ import {
   getMenuList,
   addMenu,
   updateMenu,
+  updateMenuSort,
   deleteMenu,
   getMenuInfo,
   getMenuTree,
@@ -405,6 +418,22 @@ const toggleExpand = () => {
   })
 }
 
+// 处理排序变更
+const handleSortChange = async (row) => {
+  try {
+    await updateMenuSort({
+      id: row.id,
+      sort: row.sort
+    })
+    ElMessage.success('排序更新成功')
+  } catch (error) {
+    console.error('更新排序失败:', error)
+    ElMessage.error('更新排序失败')
+    // 恢复原值
+    getList()
+  }
+}
+
 onMounted(() => {
   getList()
   getMenuTreeData()
@@ -412,6 +441,14 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.el-table :deep(.el-table__cell) {
+  padding: 6px 0;
+}
+
+.el-table :deep(.el-input-number.el-input-number--small) {
+  margin: 0 auto;
+}
+
 .menu-manage {
   padding: 20px;
 }

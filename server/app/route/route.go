@@ -62,6 +62,7 @@ func Handle(engine *gin.Engine) {
 				menuGroup.GET("/info/:id", menuController.GetInfo)
 				menuGroup.GET("/tree", menuController.GetTree)
 				menuGroup.GET("/check-permission", menuController.CheckPermission)
+				menuGroup.PUT("/sort", menuController.UpdateSort)
 			}
 
 			// 角色管理

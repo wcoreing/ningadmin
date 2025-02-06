@@ -59,4 +59,13 @@ export function checkPermission(params) {
     method: 'get',
     params
   })
+}
+
+// 更新菜单排序
+export function updateMenuSort(data) {
+  return request({
+    url: '/system/menu/sort',
+    method: 'put',
+    data
+  })
 } 

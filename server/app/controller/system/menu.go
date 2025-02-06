@@ -148,3 +148,23 @@ func (c *MenuController) CheckPermission(ctx *gin.Context) {
 
 	response.OkWithDetailed(exists, "获取成功", ctx)
 }
+
+// UpdateSort 更新菜单排序
+func (c *MenuController) UpdateSort(ctx *gin.Context) {
+	var req struct {
+		ID   int64 `json:"id" validate:"required"`
+		Sort int64 `json:"sort" validate:"gte=0"`
+	}
+
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		response.FailWithMessage(201, err.Error(), ctx)
+		return
+	}
+
+	if err := c.menuService.UpdateSort(req.ID, req.Sort); err != nil {
+		response.FailWithMessage(201, "更新排序失败", ctx)
+		return
+	}
+
+	response.Ok(ctx)
+}
