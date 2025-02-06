@@ -9,13 +9,13 @@ import (
 
 // ShopGoodsSpecValue 商品规格值表
 type ShopGoodsSpecValue struct {
-	Id        int64     `json:"id"`        // ID
-	GoodsId   int64     `json:"goodsId"`   // 商品ID
-	SpecId    int64     `json:"specId"`    // 规格ID
-	Value     string    `json:"value"`     // 规格值
-	Sort      int       `json:"sort"`      // 排序
-	CreatedAt time.Time `json:"createdAt"` // 创建时间
-	UpdatedAt time.Time `json:"updatedAt"` // 更新时间
+	Id        int64     `gorm:"primaryKey;column:id"` // ID
+	GoodsId   int64     `gorm:"column:goods_id"`      // 商品ID
+	SpecId    int64     `gorm:"column:spec_id"`       // 规格ID
+	Value     string    `gorm:"column:value"`         // 规格值
+	Sort      int       `gorm:"column:sort"`          // 排序
+	CreatedAt time.Time `gorm:"column:created_at"`    // 创建时间
+	UpdatedAt time.Time `gorm:"column:updated_at"`    // 更新时间
 }
 
 // TableName 表名

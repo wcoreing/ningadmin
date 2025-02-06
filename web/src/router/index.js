@@ -34,6 +34,7 @@ export const asyncRoutes = [
       }
     ]
   },
+
   {
     path: '/form',
     component: Layout,

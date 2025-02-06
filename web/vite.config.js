@@ -24,6 +24,13 @@ export default defineConfig({
   server: {
     title: 'WnAdmin-后台管理系统',
     // 设置为 false 可以禁用 Vite 的默认图标
-    icon: false
+    icon: false,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8080',  // 后端服务器地址
+        changeOrigin: true,
+        // rewrite: (path) => path.replace(/^\/api/, '')
+      }
+    }
   }
 })

@@ -11,7 +11,7 @@
  Target Server Version : 80012 (8.0.12)
  File Encoding         : 65001
 
- Date: 02/02/2025 17:37:49
+ Date: 06/02/2025 13:19:34
 */
 
 SET NAMES utf8mb4;
@@ -242,8 +242,7 @@ CREATE TABLE `shop_goods`  (
   `brand_id` bigint(20) NOT NULL DEFAULT 0 COMMENT '品牌ID',
   `type` tinyint(4) NOT NULL DEFAULT 1 COMMENT '商品类型1普通商品2虚拟商品',
   `name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '商品名称',
-  `description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '商品描述',
-  `detail` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '商品详情',
+  `detail_desc` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '商品详情',
   `price` decimal(10, 2) NOT NULL COMMENT '售价',
   `original_price` decimal(10, 2) NOT NULL COMMENT '原价',
   `cost_price` decimal(10, 2) NOT NULL COMMENT '成本价',
@@ -306,10 +305,10 @@ CREATE TABLE `shop_goods_comment`  (
 -- ----------------------------
 DROP TABLE IF EXISTS `shop_goods_detail`;
 CREATE TABLE `shop_goods_detail`  (
-  `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'ID',
-  `goods_id` int(10) UNSIGNED NOT NULL COMMENT '商品ID',
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `goods_id` bigint(20) NOT NULL,
+  `detail_desc` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
   `video_url` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT '' COMMENT '主视频',
-  `detail_desc` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL COMMENT '详细描述',
   `spec_desc` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL COMMENT '规格说明',
   `service_desc` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL COMMENT '服务说明',
   `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -325,42 +324,39 @@ DROP TABLE IF EXISTS `shop_goods_image`;
 CREATE TABLE `shop_goods_image`  (
   `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '图片ID',
   `goods_id` bigint(20) NOT NULL COMMENT '商品ID',
-  `is_main` tinyint(3) UNSIGNED NOT NULL DEFAULT 0 COMMENT '是否主图(0:否 1:是)',
+  `position` tinyint(3) UNSIGNED NOT NULL DEFAULT 0 COMMENT '图片位置(0:普通图片 1:主图 2:列表图 3:详情主图 4:分享图)',
   `url` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '图片地址',
-  `type` tinyint(4) NOT NULL COMMENT '图片类型(1:商品图片 2:详情图片)',
   `sort` int(11) NOT NULL DEFAULT 0 COMMENT '排序',
   `is_delete` tinyint(4) NOT NULL DEFAULT 0 COMMENT '是否删除',
   `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_goods_id`(`goods_id` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 94 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '商品图片表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 298 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '商品图片表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Table structure for shop_goods_sku
 -- ----------------------------
 DROP TABLE IF EXISTS `shop_goods_sku`;
 CREATE TABLE `shop_goods_sku`  (
-  `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'SKU ID',
-  `goods_id` int(10) UNSIGNED NOT NULL COMMENT '商品ID',
+  `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT 'SKU ID',
+  `goods_id` bigint(20) NOT NULL COMMENT '商品ID',
   `sku_code` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT 'sku编码',
-  `specs_json` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '规格值字符串(如:红色,XL)',
-  `image` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT '' COMMENT 'SKU图片',
-  `price` decimal(10, 2) UNSIGNED NOT NULL COMMENT '售价',
-  `original_price` decimal(10, 2) UNSIGNED NOT NULL COMMENT '原价',
-  `cost_price` decimal(10, 2) UNSIGNED NOT NULL DEFAULT 0.00 COMMENT '成本价',
-  `stock` int(10) UNSIGNED NOT NULL DEFAULT 0 COMMENT '库存',
-  `code` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT '' COMMENT '商品编码',
-  `weight` decimal(10, 2) UNSIGNED NOT NULL DEFAULT 0.00 COMMENT '重量(kg)',
-  `volume` decimal(10, 2) UNSIGNED NOT NULL DEFAULT 0.00 COMMENT '体积(m³)',
-  `sort` int(11) NULL DEFAULT 0 COMMENT '排序',
-  `status` tinyint(3) UNSIGNED NOT NULL DEFAULT 1 COMMENT '状态(0:禁用 1:启用)',
-  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  PRIMARY KEY (`id`) USING BTREE,
-  UNIQUE INDEX `uk_spec_values`(`goods_id` ASC, `sku_code` ASC) USING BTREE,
-  INDEX `idx_goods_id`(`goods_id` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 13 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '商品SKU表' ROW_FORMAT = DYNAMIC;
+  `specs_json` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '规格值字符串',
+  `image` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT 'SKU图片',
+  `price` decimal(10, 2) NOT NULL COMMENT '售价',
+  `original_price` decimal(10, 2) NOT NULL COMMENT '原价',
+  `cost_price` decimal(10, 2) NOT NULL COMMENT '成本价',
+  `stock` int(11) NOT NULL COMMENT '库存',
+  `code` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '商品编码',
+  `weight` decimal(10, 2) NULL DEFAULT NULL COMMENT '重量(kg)',
+  `volume` decimal(10, 2) NULL DEFAULT NULL COMMENT '体积(m³)',
+  `sort` int(11) NOT NULL COMMENT '排序',
+  `status` tinyint(4) NOT NULL COMMENT '状态(0:禁用 1:启用)',
+  `create_time` datetime NOT NULL COMMENT '创建时间',
+  `update_time` datetime NOT NULL COMMENT '更新时间',
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE = MyISAM AUTO_INCREMENT = 57 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '商品SKU表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Table structure for shop_goods_spec
@@ -376,7 +372,7 @@ CREATE TABLE `shop_goods_spec`  (
   `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_goods_id`(`goods_id` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 193 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '商品规格表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 362 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '商品规格表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Table structure for shop_goods_spec_value
@@ -393,7 +389,7 @@ CREATE TABLE `shop_goods_spec_value`  (
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_goods_id`(`goods_id` ASC) USING BTREE,
   INDEX `idx_spec_group_id`(`spec_id` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 6 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '商品规格值' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 326 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '商品规格值' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Table structure for shop_goods_tag
@@ -420,7 +416,7 @@ CREATE TABLE `shop_goods_tag_relation`  (
   `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE INDEX `uk_goods_tag`(`goods_id` ASC, `tag_id` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 104 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '商品标签关联表' ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 177 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '商品标签关联表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Table structure for shop_order
@@ -661,6 +657,47 @@ CREATE TABLE `sys_config`  (
 ) ENGINE = InnoDB AUTO_INCREMENT = 16 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '系统配置表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
+-- Table structure for sys_file
+-- ----------------------------
+DROP TABLE IF EXISTS `sys_file`;
+CREATE TABLE `sys_file`  (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '文件ID',
+  `category_id` bigint(20) NULL DEFAULT NULL COMMENT '分类ID',
+  `name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '文件名',
+  `original_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '原始文件名',
+  `url` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '文件URL',
+  `path` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '文件路径',
+  `size` bigint(20) NOT NULL COMMENT '文件大小(字节)',
+  `type` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '文件类型',
+  `md5` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '文件MD5',
+  `status` tinyint(1) NULL DEFAULT 1 COMMENT '状态(0:禁用 1:正常)',
+  `create_by` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '创建者',
+  `create_time` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` datetime NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`) USING BTREE,
+  INDEX `idx_category_id`(`category_id` ASC) USING BTREE,
+  INDEX `idx_md5`(`md5` ASC) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 20 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '文件信息表' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Table structure for sys_file_category
+-- ----------------------------
+DROP TABLE IF EXISTS `sys_file_category`;
+CREATE TABLE `sys_file_category`  (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '分类ID',
+  `parent_id` bigint(20) NULL DEFAULT NULL COMMENT '父分类ID',
+  `name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '分类名称',
+  `code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '分类编码',
+  `icon` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '图标',
+  `sort` int(11) NULL DEFAULT 0 COMMENT '排序',
+  `status` tinyint(1) NULL DEFAULT 1 COMMENT '状态(0:禁用 1:正常)',
+  `create_time` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` datetime NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE INDEX `uk_code`(`code` ASC) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 44 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '文件分类表' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
 -- Table structure for sys_permission
 -- ----------------------------
 DROP TABLE IF EXISTS `sys_permission`;
@@ -748,5 +785,11 @@ CREATE TABLE `sys_user_role`  (
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE INDEX `uniq_user_role`(`user_id`, `role_id`) USING BTREE
 ) ENGINE = MyISAM AUTO_INCREMENT = 14 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Fixed;
+
+INSERT INTO `sys_permission` 
+(`permission_id`, `parent_id`, `permission_type`, `permission_name`, `icon`, `route_path`, `component_path`, `permission_code`, `sort`, `status`, `del_flag`) 
+VALUES 
+(NULL, (SELECT permission_id FROM (SELECT permission_id FROM sys_permission WHERE permission_code = 'system') AS p), 
+'menu', '文件管理', 'Folder', 'file', 'system/file/index', 'system:file:list', 6, '0', '0');
 
 SET FOREIGN_KEY_CHECKS = 1;

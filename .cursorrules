@@ -21,3 +21,11 @@ database: wnsys
 
 写代码时，请遵循以下规则：
 1、请先阅读源代码，了解项目结构和功能，再进行代码编写，不要重复造轮子
+2、路由不要加版本号
+3、dto写在server\app\model\dto目录下
+4、controller写在server\app\controller目录下
+5、service写在server\app\service目录下
+6、model写在server\app\model目录下
+7、middleware写在server\app\middleware目录下
+8、utils写在server\app\conmmon\utils目录下
+9、数据库表写在docs\sql\wnsys.sql

@@ -264,10 +264,6 @@ const menuRules = {
   permission: [
     { required: true, message: '请输入权限标识', trigger: 'blur' },
     { pattern: /^[a-z][a-z0-9:]*$/, message: '以小写字母开头，只能包含小写字母、数字和冒号', trigger: 'blur' }
-  ],
-  routePath: [
-    { required: true, message: '请输入路由路径', trigger: 'blur' },
-    { pattern: /^\//, message: '必须以/开头', trigger: 'blur' }
   ]
 }
 

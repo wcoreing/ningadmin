@@ -2,10 +2,15 @@ package route
 
 import (
 	"wnadmin/app/controller/auth"
+	"wnadmin/app/controller/common"
 	"wnadmin/app/controller/entry"
 	"wnadmin/app/controller/form"
 	"wnadmin/app/controller/system"
 	"wnadmin/app/middleware"
+
+	"net/http"
+	"os"
+	"path"
 
 	"github.com/gin-gonic/gin"
 )
@@ -119,8 +124,37 @@ func Handle(engine *gin.Engine) {
 				formDataGroup.DELETE("/:id", formDataController.DeleteFormData)
 			}
 
+			// 添加文件管理路由
+			fileController := common.NewFileController()
+			fileGroup := apiGroup.Group("/files")
+			{
+				fileGroup.POST("/upload", fileController.Upload)
+				fileGroup.GET("", fileController.List)
+				fileGroup.DELETE("/:id", fileController.Delete)
+				fileGroup.GET("/categories", fileController.CategoryTree)
+			}
+
 			// 注册商城相关路由
 			RegisterShopRoutes(apiGroup)
 		}
 	}
+
+	// 添加静态资源路由，只需要一个就够了
+	uploadPath := "./uploads" // 文件上传目录
+	engine.Static("/uploads", uploadPath)
+
+	// 添加一个处理不存在文件的中间件
+	engine.Use(func(c *gin.Context) {
+		if c.Request.Method == http.MethodGet {
+			if path.Ext(c.Request.URL.Path) != "" { // 如果是文件请求
+				// 检查文件是否存在
+				if _, err := os.Stat(uploadPath + c.Request.URL.Path); os.IsNotExist(err) {
+					c.File("./uploads/default.png") // 返回默认图片
+					c.Abort()
+					return
+				}
+			}
+		}
+		c.Next()
+	})
 }

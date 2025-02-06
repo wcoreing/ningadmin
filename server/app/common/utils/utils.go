@@ -5,10 +5,13 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"math/rand"
+	"mime/multipart"
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -216,4 +219,44 @@ func ParseParamID(c *gin.Context) int64 {
 // GenerateUUID 生成UUID
 func GenerateUUID() string {
 	return uuid.New().String()
+}
+
+// SaveUploadedFile 保存上传的文件
+func SaveUploadedFile(file *multipart.FileHeader, dst string) error {
+	src, err := file.Open()
+	if err != nil {
+		return err
+	}
+	defer src.Close()
+
+	// 确保目标目录存在
+	if err := os.MkdirAll(filepath.Dir(dst), 0755); err != nil {
+		return err
+	}
+
+	out, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	_, err = io.Copy(out, src)
+	return err
+}
+
+// RemoveFile 删除文件
+func RemoveFile(filePath string) error {
+	return os.Remove(filePath)
+}
+
+// StrToInt64 字符串转int64
+func StrToInt64(str string) int64 {
+	if str == "" {
+		return 0
+	}
+	val, err := strconv.ParseInt(str, 10, 64)
+	if err != nil {
+		return 0
+	}
+	return val
 }

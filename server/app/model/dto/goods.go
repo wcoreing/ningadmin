@@ -5,6 +5,7 @@ type GoodsListReq struct {
 	PageNum    int    `form:"pageNum"`
 	PageSize   int    `form:"pageSize"`
 	Name       string `form:"name"`
+	GoodsId    int64  `form:"-"` // 用于ID搜索，不从表单获取
 	CategoryId int64  `form:"categoryId"`
 	SupplierId int64  `form:"supplierId"`
 	BrandId    int64  `form:"brandId"`
@@ -32,6 +33,7 @@ type GoodsDTO struct {
 	Sort          int      `json:"sort"`
 	TagIds        []int64  `json:"tagIds"`   // 标签ID列表
 	TagNames      []string `json:"tagNames"` // 标签名称列表
+	CoverImg      string   `json:"coverImg"`
 }
 
 // GoodsStatusReq 商品状态更新请求
@@ -40,27 +42,33 @@ type GoodsStatusReq struct {
 	Status string `json:"status" binding:"required"`
 }
 
+// GoodsImageUpdateItem 商品图片更新项
+type GoodsImageUpdateItem struct {
+	Url      string `json:"url"`      // 图片URL
+	Position uint8  `json:"position"` // 图片位置
+	Sort     int    `json:"sort"`     // 排序
+}
+
 // GoodsUpdateReq 商品更新请求
 type GoodsUpdateReq struct {
-	GoodsId       int64       `json:"goodsId"`       // 商品ID
-	GoodsName     string      `json:"goodsName"`     // 商品名称
-	CategoryId    int64       `json:"categoryId"`    // 分类ID
-	BrandId       int64       `json:"brandId"`       // 品牌ID
-	SupplierId    int64       `json:"supplierId"`    // 供应商ID
-	Price         float64     `json:"price"`         // 销售价
-	OriginalPrice float64     `json:"originalPrice"` // 市场价
-	Stock         int         `json:"stock"`         // 库存
-	Sort          int         `json:"sort"`          // 排序
-	Status        string      `json:"status"`        // 商品状态 0-上架 1-下架
-	Description   string      `json:"description"`   // 商品描述
-	CoverImg      string      `json:"coverImg"`      // 封面图
-	TagIds        []int64     `json:"tagIds"`        // 标签ID列表
-	Images        []string    `json:"images"`        // 商品图片列表
-	Detail        string      `json:"detail"`        // 商品详情
-	SpecType      int         `json:"specType"`      // 规格类型 0-单规格 1-多规格
-	SpecGroups    []SpecGroup `json:"specGroups"`    // 规格组
-	SkuList       []Sku       `json:"skuList"`       // SKU列表
-	IsDraft       bool        `json:"isDraft"`       // 是否为草稿
+	GoodsId       int64                   `json:"goodsId,omitempty"`
+	GoodsName     string                  `json:"goodsName" binding:"required"`
+	CategoryId    int64                   `json:"categoryId" binding:"required"`
+	BrandId       int64                   `json:"brandId" binding:"required"`
+	SupplierId    int64                   `json:"supplierId" binding:"required"`
+	Price         float64                 `json:"price"`
+	OriginalPrice float64                 `json:"originalPrice"`
+	Stock         int                     `json:"stock"`
+	Sort          int                     `json:"sort"`
+	Status        string                  `json:"status"`
+	Description   string                  `json:"description"`
+	CoverImg      string                  `json:"coverImg"`
+	TagIds        []int64                 `json:"tagIds"`
+	Images        []*GoodsImageUpdateItem `json:"images"`
+	SpecType      int                     `json:"specType"`   // 规格类型：1-单规格，2-多规格
+	SpecGroups    []SpecGroup             `json:"specGroups"` // 规格组
+	SkuList       []Sku                   `json:"skuList"`    // SKU列表
+	DetailDesc    string                  `json:"detailDesc"` // 商品详情
 }
 
 // SpecGroup 规格组
@@ -73,6 +81,15 @@ type SpecGroup struct {
 	InputValue   string      `json:"inputValue"`   // 输入框的值
 }
 
+// Sku SKU信息
+type Sku struct {
+	ID    int64                `json:"id,omitempty"`
+	Specs map[string]SpecValue `json:"specs"` // 规格信息，key为规格组名称
+	Price float64              `json:"price"` // 价格
+	Stock int                  `json:"stock"` // 库存
+	Image string               `json:"image"` // SKU图片
+}
+
 // SpecValue 规格值
 type SpecValue struct {
 	ID    int64  `json:"id"`    // 规格值ID
@@ -81,37 +98,30 @@ type SpecValue struct {
 	Sort  int    `json:"sort"`  // 排序
 }
 
-// Sku SKU信息
-type Sku struct {
-	ID    int64                `json:"id"`    // SKU ID
-	Specs map[string]SpecValue `json:"specs"` // 规格信息，key是规格名称，value是规格值对象
-	Price float64              `json:"price"` // 价格
-	Stock int                  `json:"stock"` // 库存
-}
-
 // GoodsInfoResp 商品详情响应
 type GoodsInfoResp struct {
-	GoodsId       int64       `json:"goodsId"`       // 商品ID
-	GoodsName     string      `json:"goodsName"`     // 商品名称
-	CategoryId    int64       `json:"categoryId"`    // 分类ID
-	BrandId       int64       `json:"brandId"`       // 品牌ID
-	SupplierId    int64       `json:"supplierId"`    // 供应商ID
-	Type          int8        `json:"type"`          // 商品类型
-	Price         float64     `json:"price"`         // 价格
-	OriginalPrice float64     `json:"originalPrice"` // 原价
-	CostPrice     float64     `json:"costPrice"`     // 成本价
-	Stock         int         `json:"stock"`         // 库存
-	WarnStock     int         `json:"warnStock"`     // 库存预警值
-	Unit          string      `json:"unit"`          // 单位
-	Weight        float64     `json:"weight"`        // 重量
-	Volume        float64     `json:"volume"`        // 体积
-	Sort          int         `json:"sort"`          // 排序
-	Status        string      `json:"status"`        // 状态
-	Description   string      `json:"description"`   // 商品描述
-	Detail        string      `json:"detail"`        // 商品详情
-	CoverImg      string      `json:"coverImg"`      // 封面图
-	TagIds        []int64     `json:"tagIds"`        // 标签ID列表
-	SpecType      int8        `json:"specType"`      // 规格类型
-	SpecGroups    []SpecGroup `json:"specGroups"`    // 规格组
-	SkuList       []Sku       `json:"skuList"`       // SKU列表
+	GoodsId       int64                   `json:"goodsId"`
+	GoodsName     string                  `json:"goodsName"`
+	CategoryId    int64                   `json:"categoryId"`
+	BrandId       int64                   `json:"brandId"`
+	SupplierId    int64                   `json:"supplierId"`
+	Type          int8                    `json:"type"`
+	Price         float64                 `json:"price"`
+	OriginalPrice float64                 `json:"originalPrice"`
+	CostPrice     float64                 `json:"costPrice"`
+	Stock         int                     `json:"stock"`
+	WarnStock     int                     `json:"warnStock"`
+	Unit          string                  `json:"unit"`
+	Weight        float64                 `json:"weight"`
+	Volume        float64                 `json:"volume"`
+	Sort          int                     `json:"sort"`
+	Status        string                  `json:"status"`
+	Description   string                  `json:"description"`
+	CoverImg      string                  `json:"coverImg"`
+	TagIds        []int64                 `json:"tagIds"`
+	Images        []*GoodsImageUpdateItem `json:"images"`
+	SpecType      int8                    `json:"specType"`   // 规格类型：1-单规格，2-多规格
+	SpecGroups    []SpecGroup             `json:"specGroups"` // 规格组
+	SkuList       []Sku                   `json:"skuList"`    // SKU列表
+	DetailDesc    string                  `json:"detailDesc"` // 商品详情
 }

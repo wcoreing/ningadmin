@@ -2,6 +2,7 @@ package shop
 
 import (
 	"fmt"
+	"strconv"
 	"wnadmin/app/model/dto"
 	"wnadmin/app/provider/db"
 
@@ -31,17 +32,16 @@ type GoodsDO struct {
 	Sort          int       `gorm:"column:sort" json:"sort"`                    // 排序
 	Status        int8      `gorm:"column:status" json:"status"`                // 状态
 	Description   string    `gorm:"column:description" json:"description"`      // 描述
-	Detail        string    `gorm:"column:detail" json:"detail"`                // 商品详情
 	SpecType      int8      `gorm:"column:spec_type" json:"specType"`           // 规格类型
 	IsDelete      int8      `gorm:"column:is_delete" json:"isDelete"`           // 是否删除
 	CreateTime    time.Time `gorm:"column:create_time" json:"createTime"`       // 创建时间
 	UpdateTime    time.Time `gorm:"column:update_time" json:"updateTime"`       // 更新时间
 
 	// 关联字段，不映射到数据库
-	Images     []*GoodsImageDO  `gorm:"-" json:"images"`     // 商品图片列表
-	SpecGroups []*ShopGoodsSpec `gorm:"-" json:"specGroups"` // 规格组列表
-	SkuList    []*ShopGoodsSku  `gorm:"-" json:"skuList"`    // SKU列表
-	TagIds     []int64          `gorm:"-" json:"tagIds"`     // 标签ID列表
+	Images     []*ShopGoodsImage `gorm:"-" json:"images"`     // 商品图片列表
+	SpecGroups []*ShopGoodsSpec  `gorm:"-" json:"specGroups"` // 规格组列表
+	SkuList    []*ShopGoodsSku   `gorm:"-" json:"skuList"`    // SKU列表
+	TagIds     []int64           `gorm:"-" json:"tagIds"`     // 标签ID列表
 }
 
 // TableName 表名
@@ -104,45 +104,49 @@ func (g *GoodsDO) UpdateStatus() error {
 }
 
 // GetGoodsList 获取商品列表
-func (g *GoodsDO) GetGoodsList(query *dto.GoodsListReq) ([]GoodsDO, int64, error) {
-	var goods []GoodsDO
-	var total int64
+func (g *GoodsDO) GetGoodsList(req *dto.GoodsListReq) ([]GoodsDO, int64, error) {
+	var (
+		list  []GoodsDO
+		total int64
+	)
 
-	q := db.DB.WnAdmin.Model(g).Where("is_delete = ?", 0)
+	query := g.Query().Where("is_delete = ?", 0)
 
-	// 标签查询
-	if query.TagId > 0 {
-		q = q.Joins("JOIN shop_goods_tag_relation rel ON rel.goods_id = shop_goods.id").
-			Where("rel.tag_id = ?", query.TagId)
+	// 添加查询条件
+	if req.Name != "" {
+		// 尝试将name转换为ID
+		if id, err := strconv.ParseInt(req.Name, 10, 64); err == nil {
+			// ID搜索
+			query = query.Where("id = ?", id)
+		} else {
+			// 名称或关键字搜索
+			query = query.Where("name LIKE ?", "%"+req.Name+"%")
+		}
 	}
 
-	// 其他查询条件
-	if query.CategoryId > 0 {
-		q = q.Where("category_id = ?", query.CategoryId)
+	if req.CategoryId > 0 {
+		query = query.Where("category_id = ?", req.CategoryId)
 	}
-	if query.SupplierId > 0 {
-		q = q.Where("supplier_id = ?", query.SupplierId)
+	if req.SupplierId > 0 {
+		query = query.Where("supplier_id = ?", req.SupplierId)
 	}
-	if query.BrandId > 0 {
-		q = q.Where("brand_id = ?", query.BrandId)
+	if req.BrandId > 0 {
+		query = query.Where("brand_id = ?", req.BrandId)
 	}
-	if query.Status != "" {
-		q = q.Where("status = ?", query.Status)
-	}
-	if query.Name != "" {
-		q = q.Where("name LIKE ?", "%"+query.Name+"%")
+	if req.Status != "" {
+		query = query.Where("status = ?", req.Status)
 	}
 
 	// 统计总数
-	if err := q.Count(&total).Error; err != nil {
+	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
 	// 获取分页数据
-	err := q.Offset((query.PageNum - 1) * query.PageSize).
-		Limit(query.PageSize).
+	err := query.Offset((req.PageNum - 1) * req.PageSize).
+		Limit(req.PageSize).
 		Order("create_time DESC").
-		Find(&goods).Error
+		Find(&list).Error
 
-	return goods, total, err
+	return list, total, err
 }

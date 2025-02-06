@@ -3,9 +3,25 @@
     :model-value="visible"
     @update:model-value="updateVisible"
     :title="type === 'add' ? '添加商品' : '编辑商品'"
-    width="800px"
+    width="1200px"
+    :show-close="false"
     @close="handleClose"
   >
+    <template #header="{ close, titleId, titleClass }">
+      <div class="my-header">
+        <span :id="titleId" :class="titleClass">
+          {{ type === 'add' ? '添加商品' : '编辑商品' }}
+        </span>
+        <div class="my-header-buttons">
+          <el-button @click="handleClose">取消</el-button>
+          <el-button type="primary" @click="handleSubmit">确定</el-button>
+          <el-button link @click="close">
+            <el-icon><Close /></el-icon>
+          </el-button>
+        </div>
+      </div>
+    </template>
+
     <el-form
       ref="formRef"
       :model="formData"
@@ -15,244 +31,51 @@
       <el-tabs v-model="activeTab" @tab-change="handleTabChange">
         <!-- 基本信息 Tab -->
         <el-tab-pane label="基本信息" name="basic">
-          <el-form-item label="商品名称" prop="goodsName">
-            <el-input v-model="formData.goodsName" placeholder="请输入商品名称" />
-          </el-form-item>
-          
-          <el-form-item label="商品描述" prop="description">
-            <el-input v-model="formData.description" type="textarea" placeholder="请输入商品描述" />
-          </el-form-item>
-
-          <el-form-item label="封面图" prop="coverImg">
-            <el-upload
-              class="avatar-uploader"
-              :action="uploadUrl"
-              :show-file-list="false"
-              :on-success="handleUploadSuccess"
-            >
-              <img v-if="formData.coverImg" :src="formData.coverImg" class="avatar">
-              <el-icon v-else class="avatar-uploader-icon"><Plus /></el-icon>
-            </el-upload>
-          </el-form-item>
-
-          <el-form-item label="商品分类" prop="categoryId">
-            <el-tree-select
-              v-model="formData.categoryId"
-              :data="categoryTreeData"
-              :props="{
-                value: 'id',
-                label: 'name',
-                children: 'children'
-              }"
-              placeholder="请选择商品分类"
-              clearable
-              check-strictly
-            />
-          </el-form-item>
-
-          <el-form-item label="商品品牌" prop="brandId">
-            <el-select v-model="formData.brandId" placeholder="请选择商品品牌">
-              <el-option
-                v-for="item in brandOptions"
-                :key="item.id"
-                :label="item.name"
-                :value="item.id"
-              />
-            </el-select>
-          </el-form-item>
-
-          <el-form-item label="供应商" prop="supplierId">
-            <el-select v-model="formData.supplierId" placeholder="请选择供应商">
-              <el-option
-                v-for="item in supplierOptions"
-                :key="item.id"
-                :label="item.name"
-                :value="item.id"
-              />
-            </el-select>
-          </el-form-item>
-
-          <el-form-item label="销售价" prop="price">
-            <el-input-number
-              v-model="formData.price"
-              :precision="2"
-              :step="0.1"
-              :min="0"
-            />
-          </el-form-item>
-
-          <el-form-item label="市场价" prop="originalPrice">
-            <el-input-number
-              v-model="formData.originalPrice"
-              :precision="2"
-              :step="0.1"
-              :min="0"
-            />
-          </el-form-item>
-
-          <el-form-item label="商品库存" prop="stock">
-            <el-input-number
-              v-model="formData.stock"
-              :min="0"
-              :precision="0"
-            />
-          </el-form-item>
-
-          <el-form-item label="排序" prop="sort">
-            <el-input-number
-              v-model="formData.sort"
-              :min="0"
-              :precision="0"
-            />
-          </el-form-item>
-
-          <el-form-item label="商品状态" prop="status">
-            <el-radio-group v-model="formData.status">
-              <el-radio :label="'0'">上架</el-radio>
-              <el-radio :label="'1'">下架</el-radio>
-            </el-radio-group>
-          </el-form-item>
-
-          <el-form-item label="商品标签" prop="tagIds">
-            <el-select v-model="formData.tagIds" multiple placeholder="请选择商品标签">
-              <el-option
-                v-for="item in tagOptions"
-                :key="item.id"
-                :label="item.name"
-                :value="item.id"
-              />
-            </el-select>
-          </el-form-item>
+          <basic-info
+            :form-data="formData"
+            :category-options="categoryOptions"
+            :brand-options="brandOptions"
+            :supplier-options="supplierOptions"
+            :tag-options="tagOptions"
+          />
         </el-tab-pane>
 
         <!-- 商品图片 Tab -->
         <el-tab-pane label="商品图片" name="images">
-          <el-form-item label="商品图片" prop="images">
-            <el-upload
-              class="goods-images-uploader"
-              :action="uploadUrl"
-              list-type="picture-card"
-              :on-success="handleImagesUploadSuccess"
-              :on-remove="handleImagesRemove"
-              multiple
-            >
-              <el-icon><Plus /></el-icon>
-            </el-upload>
-          </el-form-item>
+          <goods-images :form-data="formData" />
         </el-tab-pane>
 
         <!-- 规格设置 Tab -->
         <el-tab-pane label="规格设置" name="specs">
-          <el-form-item label="规格设置">
-            <el-radio-group v-model="formData.specType">
-              <el-radio :label="1" value="1">单规格</el-radio>
-              <el-radio :label="2" value="2">多规格</el-radio>
-            </el-radio-group>
-          </el-form-item>
-          
-          <!-- 多规格设置 -->
-          <template v-if="formData.specType === 2">
-            <div class="spec-container">
-              <!-- 规格组列表 -->
-              <div v-for="(group, groupIndex) in formData.specGroups" :key="groupIndex" class="spec-group-item">
-                <div class="spec-group-header">
-                  <div class="spec-group-title">规格组{{ groupIndex + 1 }}</div>
-                  <el-input
-                    v-model="group.name"
-                    placeholder="请输入规格组名称"
-                    class="spec-group-name"
-                  />
-                  <el-button type="danger" link @click="removeSpecGroup(groupIndex)">
-                    <el-icon><Delete /></el-icon>
-                  </el-button>
-                </div>
-                
-                <!-- 规格值列表 -->
-                <div class="spec-values">
-                  <div class="spec-values-list">
-                    <el-tag
-                      v-for="(value, valueIndex) in group.values"
-                      :key="valueIndex"
-                      closable
-                      class="spec-value-tag"
-                      @close="handleRemoveSpecValue(groupIndex, valueIndex)"
-                    >
-                      {{ value.name || value.value }}
-                    </el-tag>
-                  </div>
-                  
-                  <!-- 添加规格值 -->
-                  <div class="spec-value-input">
-                    <el-input
-                      v-if="group.inputVisible"
-                      ref="saveTagInput"
-                      v-model="group.inputValue"
-                      size="small"
-                      class="spec-input"
-                      placeholder="请输入规格值"
-                      @keyup.enter="handleInputConfirm(groupIndex)"
-                      @blur="handleInputConfirm(groupIndex)"
-                    />
-                    <el-button
-                      v-else
-                      size="small"
-                      type="primary"
-                      link
-                      @click="showInput(groupIndex)"
-                    >
-                      <el-icon><Plus /></el-icon> 添加规格值
-                    </el-button>
-                  </div>
-                </div>
-              </div>
-
-              <!-- 添加规格组按钮 -->
-              <el-button type="primary" class="add-spec-group" @click="addSpecGroup">
-                <el-icon><Plus /></el-icon> 添加规格组
-              </el-button>
-            </div>
-          </template>
+          <template #label>规格设置</template>
+          <SpecSettings 
+            :form-data="formData"
+            :upload-url="uploadUrl"
+            ref="specSettingsRef"
+          />
         </el-tab-pane>
 
         <!-- 商品详情 Tab -->
         <el-tab-pane label="商品详情" name="detail">
-          <el-form-item label="商品详情" prop="detail">
-            <div style="border: 1px solid #ccc">
-              <Toolbar
-                style="border-bottom: 1px solid #ccc"
-                :editor="editorRef"
-                :defaultConfig="toolbarConfig"
-                mode="default"
-              />
-              <Editor
-                style="height: 500px"
-                v-model="formData.detail"
-                :defaultConfig="editorConfig"
-                mode="default"
-                @onCreated="handleCreated"
-              />
-            </div>
-          </el-form-item>
+          <goods-detail :form-data="formData" :key="detailKey" />
         </el-tab-pane>
       </el-tabs>
     </el-form>
-
-    <template #footer>
-      <el-button @click="handleClose">取 消</el-button>
-      <el-button type="primary" @click="handleSubmit">确定保存</el-button>
-    </template>
   </el-dialog>
 </template>
 
 <script setup>
-import { ref, defineProps, defineEmits, watch, computed, shallowRef, onBeforeUnmount, nextTick } from 'vue'
+import { ref, defineProps, defineEmits, watch, computed, shallowRef, onBeforeUnmount, nextTick, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { updateGoods, createGoods, getGoodsInfo } from '@/api/shop/goods'
-import { Plus, Rank, Delete } from '@element-plus/icons-vue'
+import { Plus, Rank, Delete, Search, UploadFilled, Close } from '@element-plus/icons-vue'
 import '@wangeditor/editor/dist/css/style.css'
 import { Editor, Toolbar } from '@wangeditor/editor-for-vue'
-import Draggable from 'vuedraggable'
-import { ElPagination } from 'element-plus'
+import FileManager from '@/components/FileManager/index.vue'
+import BasicInfo from './BasicInfo.vue'
+import GoodsImages from './GoodsImages.vue'
+import SpecSettings from './SpecSettings.vue'
+import GoodsDetail from './GoodsDetail.vue'
 
 const props = defineProps({
   visible: {
@@ -312,7 +135,7 @@ const formData = ref({
   specType: 1,
   specGroups: [],
   skuList: [],
-  detail: ''
+  detailDesc: ''
 })
 
 // 表单验证规则
@@ -346,14 +169,65 @@ const tabRules = {
   detail: [] // 详情相关的验证
 }
 
-// 获取商品详情数据
+// 编辑器实例
+const editorRef = shallowRef(null)
+
+// 编辑器配置
+const toolbarConfig = {
+  excludeKeys: []
+}
+
+const editorConfig = {
+  placeholder: '请输入商品详情...',
+  MENU_CONF: {
+    uploadImage: {
+      server: props.uploadUrl,
+      fieldName: 'file',
+      onSuccess(file, res) {
+        return res.url
+      }
+    }
+  }
+}
+
+// 修改编辑器创建回调
+const handleCreated = (editor) => {
+  editorRef.value = editor
+}
+
+// 修改 loadGoodsDetail 方法
 const loadGoodsDetail = async (id) => {
   try {
     const data = await getGoodsInfo(id)
-    console.log('获取商品详情原始数据:', data)
     
-    // 重置表单数据
+    // 先重置表单数据
     formData.value = {
+      goodsId: undefined,
+      goodsName: '',
+      categoryId: undefined,
+      brandId: undefined,
+      supplierId: undefined,
+      price: 0,
+      originalPrice: 0,
+      stock: 0,
+      sort: 0,
+      status: '0',
+      description: '',
+      coverImg: '',
+      tagIds: [],
+      images: [],
+      specType: 1,
+      specGroups: [],
+      skuList: [],
+      detailDesc: ''
+    }
+
+    // 等待下一个 tick，确保重置完成
+    await nextTick()
+    
+    // 然后设置新数据
+    formData.value = {
+      ...formData.value,
       goodsId: data.goodsId,
       goodsName: data.goodsName,
       categoryId: data.categoryId,
@@ -367,77 +241,71 @@ const loadGoodsDetail = async (id) => {
       description: data.description,
       coverImg: data.coverImg,
       tagIds: data.tagIds || [],
-      detail: data.detail || '',
+      images: data.images || [],
       specType: data.specType || 1,
-      specGroups: [],
-      skuList: [],
-      images: []
+      specGroups: data.specGroups ? JSON.parse(JSON.stringify(data.specGroups)) : [],
+      skuList: data.skuList ? JSON.parse(JSON.stringify(data.skuList)) : [],
+      detailDesc: data.detailDesc || '<p><br></p>'
     }
 
-    // 处理规格组数据
-    if (data.specGroups && data.specGroups.length > 0) {
-      console.log('规格组原始数据:', data.specGroups)
-      formData.value.specGroups = data.specGroups.map(group => {
-        console.log('处理规格组:', group)
-        return {
-          id: group.id,
-          name: group.name,
-          sort: group.sort || 0,
-          values: (group.values || []).map(value => ({
-            id: value.id,
-            name: value.name,
-            value: value.value,
-            sort: value.sort || 0
-          })),
-          inputVisible: false,
-          inputValue: ''
-        }
-      })
-    }
-
-    console.log('处理后的规格组数据:', formData.value.specGroups)
-
-    // 处理 SKU 列表数据
-    if (data.skuList && data.skuList.length > 0) {
-      formData.value.skuList = data.skuList.map(sku => ({
-        id: sku.id,
-        specs: sku.specs || {},
-        price: sku.price || 0,
-        stock: sku.stock || 0
-      }))
-    }
-
-    console.log('处理后的表单数据:', formData.value)
-
-    // 设置富文本内容
-    nextTick(() => {
-      if (editorRef.value && data.detail) {
-        editorRef.value.setHtml(data.detail)
-      }
-    })
+   
+    
+    // 手动触发 SpecSettings 组件的初始化
+    await nextTick()
+    specSettingsRef.value?.initSkuList?.()
   } catch (error) {
     console.error('获取商品详情失败:', error)
     ElMessage.error('获取商品详情失败')
   }
 }
 
+// 添加 specSettingsRef
+const specSettingsRef = ref(null)
+
 // 修改 watch
 watch(
   () => props.visible,
   async (val) => {
     if (val) {
+      // 等待 Dialog 显示完成后再加载数据
+      await nextTick()
+      
       if (props.type === 'edit' && props.data?.goodsId) {
         console.log('开始加载商品详情:', props.data.goodsId)
         await loadGoodsDetail(props.data.goodsId)
       } else {
         // 新增时重置表单
-        handleClose()
+        formData.value = {
+          goodsId: undefined,
+          goodsName: '',
+          categoryId: undefined,
+          brandId: undefined,
+          supplierId: undefined,
+          price: 0,
+          originalPrice: 0,
+          stock: 0,
+          sort: 0,
+          status: '0',
+          description: '',
+          coverImg: '',
+          tagIds: [],
+          images: [],
+          specType: 1,
+          specGroups: [],
+          skuList: [],
+          detailDesc: '<p><br></p>'
+        }
+        formRef.value?.resetFields()
       }
-      // 重置当前标签页
       activeTab.value = 'basic'
+    } else {
+      // Dialog 关闭时销毁编辑器
+      if (editorRef.value) {
+        editorRef.value.destroy()
+        editorRef.value = null
+      }
     }
-  },
-  { immediate: true }
+  }
 )
 
 // 添加 updateVisible 方法处理可见性更新
@@ -450,139 +318,100 @@ const handleTabChange = (tabName) => {
   activeTab.value = tabName
 }
 
+// 添加一个用于刷新商品详情组件的 key
+const detailKey = ref(0)
+
 // 修改提交表单方法
 const handleSubmit = async () => {
-  if (!formRef.value) return
-  
   try {
     await formRef.value.validate()
     
-    // 添加规格验证
-    if (formData.value.specType === 1 && validSpecGroups.value.length === 0) {
-      ElMessage.error('请至少添加一个规格组')
-      activeTab.value = 'specs'
-      return
+    // 处理 SKU 数据
+    if (formData.value.specType === 2) {
+      formData.value.skuList = formData.value.skuList.map(sku => ({
+        specs: sku.specs,
+        price: Number(sku.price || 0),
+        stock: Number(sku.stock || 0),
+        image: sku.image || ''
+      }))
     }
-    
-    // 添加图片验证
-    if (!formData.value.coverImg) {
-      ElMessage.error('请上传商品封面图')
-      activeTab.value = 'basic'
-      return
+
+    const submitData = {
+      ...formData.value
     }
-    
-    try {
-      if (props.type === 'add') {
-        await createGoods(formData.value)
-        ElMessage.success('添加成功')
-      } else {
-        await updateGoods(formData.value)
-        ElMessage.success('更新成功')
-      }
-      emit('success')
-      handleClose()
-    } catch (error) {
-      console.error(props.type === 'add' ? '添加失败:' : '更新失败:', error)
-      ElMessage.error(props.type === 'add' ? '添加失败' : '更新失败')
+
+    if (props.type === 'add') {
+      await createGoods(submitData)
+    } else {
+      await updateGoods(submitData)
     }
+
+    ElMessage.success(props.type === 'add' ? '添加成功' : '更新成功')
+    emit('success')
+    handleClose()
+    // 刷新商品详情组件
+    detailKey.value++
   } catch (error) {
-    // 获取第一个验证失败的字段
-    const firstErrorField = Object.keys(error.fields)[0]
-    // 找到对应的 tab
-    for (const [tabName, fields] of Object.entries(tabRules)) {
-      if (fields.includes(firstErrorField)) {
-        activeTab.value = tabName
-        break
-      }
+    console.error('提交失败:', error)
+    ElMessage.error('提交失败，请检查表单')
+  }
+}
+
+// 处理文件选择
+const handleImageSelect = (files) => {
+  console.log('选择的文件:', files) // 调试日志
+  
+  // 确保 files 是一个对象或数组
+  const fileData = Array.isArray(files) ? files : [files]
+  
+  if (currentSelectType.value === 'cover') {
+    // 处理封面图片，单选
+    if (fileData.length > 0) {
+      const file = fileData[0]
+      // 直接设置 url，不使用解构赋值
+      formData.value.coverImg = file.url
+      console.log('设置封面图片:', formData.value.coverImg)
     }
-  }
-}
-
-// 编辑器实例，必须用 shallowRef
-const editorRef = shallowRef()
-
-// 编辑器配置
-const toolbarConfig = {
-  excludeKeys: [] // 可以配置需要排除的菜单
-}
-
-const editorConfig = {
-  placeholder: '请输入商品详情...',
-  MENU_CONF: {
-    uploadImage: {
-      server: props.uploadUrl,
-      fieldName: 'file',
-      // 单个文件上传成功后
-      onSuccess(file, res) {
-        return res.url // 返回图片 URL
-      },
+  } else {
+    // 处理商品图片，多选
+    if (!Array.isArray(formData.value.images)) {
+      formData.value.images = []
     }
-  }
-}
-
-// 组件销毁时，也及时销毁编辑器
-onBeforeUnmount(() => {
-  const editor = editorRef.value
-  if (editor) {
-    editor.destroy()
-  }
-})
-
-// 编辑器回调函数
-const handleCreated = (editor) => {
-  editorRef.value = editor
-}
-
-// 修改 handleClose 方法
-const handleClose = () => {
-  formRef.value?.resetFields()
-  // 先销毁编辑器实例
-  const editor = editorRef.value
-  if (editor) {
-    editor.destroy()
+    
+    // 直接使用 url
+    const newImages = fileData.map(file => file.url)
+    formData.value.images.push(...newImages)
+    console.log('添加商品图片:', newImages)
   }
   
-  formData.value = {
-    goodsId: undefined,
-    goodsName: '',
-    categoryId: undefined,
-    brandId: undefined,
-    supplierId: undefined,
-    price: 0,
-    originalPrice: 0,
-    stock: 0,
-    sort: 0,
-    status: '0',
-    description: '',
-    coverImg: '',
-    tagIds: [],
-    images: [],
-    specType: 1,
-    specGroups: [],
-    skuList: [],
-    detail: ''
-  }
-  emit('update:visible', false)
-  emit('close')
+  // 关闭文件管理器
+  fileManagerVisible.value = false
 }
 
-// 处理图片上传成功
-const handleUploadSuccess = (res) => {
-  formData.value.coverImg = res.url
-}
-
-// 处理多图片上传成功
-const handleImagesUploadSuccess = (res) => {
-  formData.value.images.push(res.url)
-}
-
-// 处理图片移除
-const handleImagesRemove = (file) => {
-  const index = formData.value.images.indexOf(file.url)
-  if (index !== -1) {
+// 处理图片删除
+const handleRemoveImage = (type, index) => {
+  if (type === 'cover') {
+    formData.value.coverImg = ''
+  } else {
     formData.value.images.splice(index, 1)
   }
 }
+
+// 格式化文件大小
+const formatSize = (bytes) => {
+  if (bytes === 0) return '0 B'
+  const k = 1024
+  const sizes = ['B', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+}
+
+// 修改初始化
+onMounted(() => {
+  if (props.type === 'edit' && props.data?.goodsId) {
+    loadGoodsDetail(props.data.goodsId)
+  }
+})
 
 // 生成笛卡尔积
 const cartesian = (...arrays) => {
@@ -615,7 +444,7 @@ const skuList = computed(() => {
   const combinations = cartesian(...specArrays)
   
   // 生成 SKU 列表
-  return combinations.map((combination, index) => {
+  return combinations.map((combination) => {
     // 创建规格对象
     const specs = {}
     validSpecGroups.value.forEach((group, groupIndex) => {
@@ -624,17 +453,19 @@ const skuList = computed(() => {
     
     // 查找已存在的 SKU 数据
     const existingSku = formData.value.skuList?.find(
-      sku => JSON.stringify(sku.specs) === JSON.stringify(specs)
-    ) || {
+      sku => {
+        // 只比较规格值，忽略 id 等其他属性
+        const isSameSpecs = Object.entries(sku.specs).every(([groupName, spec]) => {
+          const targetSpec = specs[groupName]
+          return targetSpec && spec.value === targetSpec.value
+        })
+        return isSameSpecs
+      }
+    )
+    return existingSku || {
       specs,
       price: formData.value.price || 0,
       stock: formData.value.stock || 0
-    }
-    
-    // 返回新的对象，避免直接修改原对象
-    return {
-      ...existingSku,
-      specs: { ...specs }
     }
   })
 })
@@ -646,7 +477,6 @@ watch(
     () => formData.value.specType
   ],
   () => {
-    // 只在多规格模式下更新 SKU 列表
     if (formData.value.specType === 2) {
       formData.value.skuList = skuList.value
     } else {
@@ -723,6 +553,56 @@ const removeSpecGroup = (groupIndex) => {
   }).then(() => {
     formData.value.specGroups.splice(groupIndex, 1)
   })
+}
+
+// 附件管理相关
+const fileManagerVisible = ref(false)
+const currentSelectType = ref('')  // 添加回来，用于区分封面和商品图片
+
+// 打开文件管理器
+const openFileManager = (type) => {
+  currentSelectType.value = type
+  fileManagerVisible.value = true
+}
+
+// 添加 handleClose 方法
+const handleClose = () => {
+  // 重置表单数据
+  formData.value = {
+    goodsId: undefined,
+    goodsName: '',
+    categoryId: undefined,
+    brandId: undefined,
+    supplierId: undefined,
+    price: 0,
+    originalPrice: 0,
+    stock: 0,
+    sort: 0,
+    status: '0',
+    description: '',
+    coverImg: '',
+    tagIds: [],
+    images: [],
+    specType: 1,
+    specGroups: [],
+    skuList: [],
+    detailDesc: ''
+  }
+  
+  // 重置表单验证
+  formRef.value?.resetFields()
+  
+  // 重置当前标签页
+  activeTab.value = 'basic'
+  
+  // 关闭对话框
+  emit('update:visible', false)
+  
+  // 销毁编辑器实例
+  if (editorRef.value) {
+    editorRef.value.destroy()
+    editorRef.value = null
+  }
 }
 </script>
 
@@ -824,5 +704,79 @@ const removeSpecGroup = (groupIndex) => {
 
 :deep(.w-e-text-container) {
   background-color: #fff;
+}
+
+.image-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+
+  .image-item {
+    position: relative;
+    width: 120px;
+    height: 120px;
+    border: 1px solid var(--el-border-color);
+    border-radius: 4px;
+    overflow: hidden;
+
+    .el-image {
+      width: 100%;
+      height: 100%;
+    }
+
+    .image-actions {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    &:hover .image-actions {
+      opacity: 1;
+    }
+  }
+
+  .image-upload {
+    width: 120px;
+    height: 120px;
+    border: 1px dashed var(--el-border-color);
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: border-color 0.2s;
+    color: var(--el-text-color-secondary);
+
+    &:hover {
+      border-color: var(--el-color-primary);
+      color: var(--el-color-primary);
+    }
+
+    .el-icon {
+      font-size: 24px;
+      margin-bottom: 8px;
+    }
+  }
+}
+
+:deep(.el-pagination) {
+  margin-top: 16px;
+  justify-content: center;
+}
+
+.my-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.my-header-buttons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 </style> 

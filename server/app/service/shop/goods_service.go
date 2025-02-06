@@ -3,6 +3,7 @@ package shop
 import (
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"strconv"
 	"time"
 	"wnadmin/app/model/do/shop"
@@ -24,6 +25,14 @@ func (s *GoodsService) GetGoodsList(req *dto.GoodsListReq) (*dto.PageResult, err
 	)
 
 	// 查询商品列表
+	if req.Name != "" {
+		// 尝试将name转换为ID
+		if id, err := strconv.ParseInt(req.Name, 10, 64); err == nil {
+			// 如果可以转换为数字，添加ID查询条件
+			req.GoodsId = id
+		}
+	}
+
 	goods, total, err := (&shop.GoodsDO{}).GetGoodsList(req)
 	if err != nil {
 		return nil, err
@@ -72,6 +81,15 @@ func (s *GoodsService) GetGoodsList(req *dto.GoodsListReq) (*dto.PageResult, err
 			TagNames:      tagNames, // 添加标签名称列表
 		}
 		result = append(result, item)
+	}
+
+	// 查询商品图片
+	for i := range result {
+		var images []*shop.ShopGoodsImage
+		if err := db.DB.WnAdmin.Where("goods_id = ? AND position = ?", result[i].GoodsId, shop.ImagePositionMain).
+			First(&images).Error; err == nil && len(images) > 0 {
+			result[i].CoverImg = images[0].Url
+		}
 	}
 
 	return &dto.PageResult{
@@ -198,6 +216,16 @@ func (s *GoodsService) GetGoodsInfo(id int64) (*dto.GoodsInfoResp, error) {
 		return nil, err
 	}
 
+	// 查询商品详情
+	var detail shop.ShopGoodsDetail
+	if err := db.DB.WnAdmin.Where("goods_id = ?", id).First(&detail).Error; err != nil {
+		if err != gorm.ErrRecordNotFound {
+			return nil, err
+		}
+	}
+
+	fmt.Printf("商品图片数据: %+v\n", goods.Images)
+
 	// 转换为响应对象
 	resp := &dto.GoodsInfoResp{
 		GoodsId:       goods.Id,
@@ -217,19 +245,35 @@ func (s *GoodsService) GetGoodsInfo(id int64) (*dto.GoodsInfoResp, error) {
 		Sort:          goods.Sort,
 		Status:        strconv.FormatInt(int64(goods.Status), 10),
 		Description:   goods.Description,
-		Detail:        goods.Detail,
+		DetailDesc:    detail.DetailDesc,
 		SpecType:      goods.SpecType,
 		TagIds:        goods.TagIds,
 	}
 
-	// 设置封面图
+	// 处理图片
 	if len(goods.Images) > 0 {
+		// 设置主图
 		for _, img := range goods.Images {
-			if img.IsMain == 1 {
+			if img.Position == shop.ImagePositionMain {
 				resp.CoverImg = img.Url
 				break
 			}
 		}
+
+		// 设置其他图片列表
+		var images []*dto.GoodsImageUpdateItem
+		for _, img := range goods.Images {
+			if img.Position != shop.ImagePositionMain {
+				images = append(images, &dto.GoodsImageUpdateItem{
+					Url:      img.Url,
+					Position: img.Position,
+					Sort:     img.Sort,
+				})
+			}
+		}
+		resp.Images = images
+	} else {
+		resp.Images = make([]*dto.GoodsImageUpdateItem, 0) // 确保返回空数组而不是 nil
 	}
 
 	// 转换规格组
@@ -261,183 +305,264 @@ func (s *GoodsService) GetGoodsInfo(id int64) (*dto.GoodsInfoResp, error) {
 	if goods.SkuList != nil {
 		resp.SkuList = make([]dto.Sku, len(goods.SkuList))
 		for i, sku := range goods.SkuList {
+			// 打印调试信息
+			fmt.Printf("原始 SKU 数据: %+v\n", sku)
+			fmt.Printf("规格 JSON: %s\n", sku.SpecsJson)
+
 			var specs map[string]dto.SpecValue
-			if err := json.Unmarshal([]byte(sku.SpecsJson), &specs); err == nil {
-				resp.SkuList[i] = dto.Sku{
-					ID:    sku.Id,
-					Specs: specs,
-					Price: sku.Price,
-					Stock: sku.Stock,
-				}
+			if err := json.Unmarshal([]byte(sku.SpecsJson), &specs); err != nil {
+				fmt.Printf("解析 SKU 规格失败: %v\n", err)
+				continue
 			}
+
+			resp.SkuList[i] = dto.Sku{
+				ID:    sku.Id,
+				Specs: specs,
+				Price: sku.Price,
+				Stock: sku.Stock,
+				Image: sku.Image,
+			}
+
+			// 打印转换后的数据
+			fmt.Printf("转换后的 SKU 数据: %+v\n", resp.SkuList[i])
 		}
 	}
+
+	// 添加调试日志
+	fmt.Printf("返回的图片数据: CoverImg=%s, Images=%+v\n", resp.CoverImg, resp.Images)
 
 	return resp, nil
 }
 
 // UpdateGoods 更新商品
 func (s *GoodsService) UpdateGoods(req *dto.GoodsUpdateReq) error {
-	goods := &shop.GoodsDO{Id: req.GoodsId}
-	if err := goods.First(); err != nil {
-		return fmt.Errorf("商品不存在")
-	}
-
-	// 开启事务
-	tx := db.DB.WnAdmin.Begin()
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-		}
-	}()
-
-	// 更新商品基本信息
-	goods.Name = req.GoodsName
-	goods.CategoryId = req.CategoryId
-	goods.BrandId = req.BrandId
-	goods.SupplierId = req.SupplierId
-	goods.Price = req.Price
-	goods.OriginalPrice = req.OriginalPrice
-	goods.Stock = req.Stock
-	goods.Sort = req.Sort
-	goods.Description = req.Description
-	goods.SpecType = int8(req.SpecType)
-	status, _ := strconv.ParseInt(req.Status, 10, 8)
-	goods.Status = int8(status)
-
-	if err := tx.Save(goods).Error; err != nil {
-		tx.Rollback()
-		return fmt.Errorf("更新商品失败: %v", err)
-	}
-
-	// 处理规格信息
-	if req.SpecType == 1 && len(req.SpecGroups) > 0 {
-		// 删除原有规格和规格值
-		if err := tx.Where("goods_id = ?", goods.Id).Delete(&shop.ShopGoodsSpec{}).Error; err != nil {
-			tx.Rollback()
-			return fmt.Errorf("删除原有规格失败: %v", err)
-		}
-		if err := tx.Where("goods_id = ?", goods.Id).Delete(&shop.ShopGoodsSpecValue{}).Error; err != nil {
-			tx.Rollback()
-			return fmt.Errorf("删除原有规格值失败: %v", err)
-		}
-		// 删除原有SKU
-		if err := tx.Where("goods_id = ?", goods.Id).Delete(&shop.ShopGoodsSku{}).Error; err != nil {
-			tx.Rollback()
-			return fmt.Errorf("删除原有SKU失败: %v", err)
+	return db.DB.WnAdmin.Transaction(func(tx *gorm.DB) error {
+		// 1. 查询商品
+		goods := &shop.GoodsDO{Id: req.GoodsId}
+		if err := tx.First(goods).Error; err != nil {
+			return fmt.Errorf("商品不存在")
 		}
 
-		// 保存新的规格和规格值
-		for _, group := range req.SpecGroups {
-			spec := &shop.ShopGoodsSpec{
-				GoodsId:    goods.Id,
-				Name:       group.Name,
-				Sort:       group.Sort,
-				IsDelete:   0,
-				CreateTime: time.Now(),
-				UpdateTime: time.Now(),
+		// 2. 更新商品基本信息
+		goods.Name = req.GoodsName
+		goods.CategoryId = req.CategoryId
+		goods.BrandId = req.BrandId
+		goods.SupplierId = req.SupplierId
+		goods.Price = req.Price
+		goods.OriginalPrice = req.OriginalPrice
+		goods.Stock = req.Stock
+		goods.Sort = req.Sort
+		goods.Description = req.Description
+		goods.SpecType = int8(req.SpecType)
+		status, _ := strconv.ParseInt(req.Status, 10, 8)
+		goods.Status = int8(status)
+
+		if err := tx.Save(goods).Error; err != nil {
+			return fmt.Errorf("更新商品失败: %v", err)
+		}
+
+		// 更新商品详情
+		var detail shop.ShopGoodsDetail
+		if err := tx.Where("goods_id = ?", goods.Id).First(&detail).Error; err != nil {
+			if err == gorm.ErrRecordNotFound {
+				detail = shop.ShopGoodsDetail{
+					GoodsId: int(goods.Id),
+				}
+			} else {
+				return fmt.Errorf("查询商品详情失败: %v", err)
+			}
+		}
+		detail.DetailDesc = req.DetailDesc
+		if err := tx.Save(&detail).Error; err != nil {
+			return fmt.Errorf("保存商品详情失败: %v", err)
+		}
+
+		// 3. 处理规格信息
+		if req.SpecType == 2 { // 多规格商品
+			// 删除原有规格和规格值
+			if err := tx.Where("goods_id = ?", goods.Id).Delete(&shop.ShopGoodsSpec{}).Error; err != nil {
+				return fmt.Errorf("删除原有规格失败: %v", err)
+			}
+			if err := tx.Where("goods_id = ?", goods.Id).Delete(&shop.ShopGoodsSpecValue{}).Error; err != nil {
+				return fmt.Errorf("删除原有规格值失败: %v", err)
+			}
+			// 删除原有SKU
+			if err := tx.Where("goods_id = ?", goods.Id).Delete(&shop.ShopGoodsSku{}).Error; err != nil {
+				return fmt.Errorf("删除原有SKU失败: %v", err)
 			}
 
-			if err := tx.Create(spec).Error; err != nil {
-				tx.Rollback()
-				return fmt.Errorf("保存规格失败: %v", err)
-			}
-
-			// 保存规格值
-			for _, value := range group.Values {
-				specValue := &shop.ShopGoodsSpecValue{
-					GoodsId:   goods.Id,
-					SpecId:    spec.Id,
-					Value:     value.Name,
-					Sort:      value.Sort,
-					CreatedAt: time.Now(),
-					UpdatedAt: time.Now(),
+			// 保存新的规格和规格值
+			for _, group := range req.SpecGroups {
+				spec := &shop.ShopGoodsSpec{
+					GoodsId:    goods.Id,
+					Name:       group.Name,
+					Sort:       group.Sort,
+					IsDelete:   0,
+					CreateTime: time.Now(),
+					UpdateTime: time.Now(),
 				}
 
-				if err := tx.Create(specValue).Error; err != nil {
-					tx.Rollback()
-					return fmt.Errorf("保存规格值失败: %v", err)
+				if err := tx.Create(spec).Error; err != nil {
+					return fmt.Errorf("保存规格失败: %v", err)
+				}
+
+				// 保存规格值
+				for _, value := range group.Values {
+					specValue := &shop.ShopGoodsSpecValue{
+						GoodsId:   goods.Id,
+						SpecId:    spec.Id,
+						Value:     value.Name,
+						Sort:      value.Sort,
+						CreatedAt: time.Now(),
+						UpdatedAt: time.Now(),
+					}
+
+					if err := tx.Create(specValue).Error; err != nil {
+						return fmt.Errorf("保存规格值失败: %v", err)
+					}
 				}
 			}
-		}
 
-		// 保存SKU列表
-		if len(req.SkuList) > 0 {
-			for _, skuData := range req.SkuList {
-				// 将规格信息转换为JSON字符串
-				specsJSON, err := json.Marshal(skuData.Specs)
+			// 添加调试日志
+			fmt.Printf("接收到的商品数据: %+v\n", req)
+			fmt.Printf("SKU列表数据: %+v\n", req.SkuList)
+
+			// 保存SKU列表
+			for _, sku := range req.SkuList {
+				specsJson, err := json.Marshal(sku.Specs)
 				if err != nil {
-					return fmt.Errorf("序列化SKU规格信息失败: %v", err)
+					tx.Rollback()
+					return fmt.Errorf("序列化规格数据失败: %v", err)
 				}
 
-				sku := &shop.ShopGoodsSku{
-					GoodsId:       int64(goods.Id),
-					SkuCode:       fmt.Sprintf("SKU%d%d", goods.Id, time.Now().UnixNano()),
-					SpecsJson:     string(specsJSON),
-					Price:         skuData.Price,
+				skuCode := fmt.Sprintf("SKU%d%d%d", goods.Id, time.Now().Unix(), rand.Int63n(1000000))
+				skuData := &shop.ShopGoodsSku{
+					GoodsId:       goods.Id,
+					SkuCode:       skuCode,
+					SpecsJson:     string(specsJson),
+					Price:         sku.Price,
 					OriginalPrice: goods.OriginalPrice,
 					CostPrice:     goods.CostPrice,
-					Stock:         skuData.Stock,
+					Stock:         sku.Stock,
 					Status:        1,
 					Sort:          0,
+					Image:         sku.Image,
 					CreateTime:    time.Now(),
 					UpdateTime:    time.Now(),
 				}
 
-				if err := tx.Create(sku).Error; err != nil {
+				if err := tx.Create(skuData).Error; err != nil {
 					return fmt.Errorf("保存SKU失败: %v", err)
 				}
 			}
-		}
-	}
+		} else if req.SpecType == 1 { // 单规格商品
+			fmt.Printf("处理单规格商品\n")
+			// 删除原有规格和规格值
+			if err := tx.Where("goods_id = ?", goods.Id).Delete(&shop.ShopGoodsSpec{}).Error; err != nil {
+				return fmt.Errorf("删除原有规格失败: %v", err)
+			}
+			if err := tx.Where("goods_id = ?", goods.Id).Delete(&shop.ShopGoodsSpecValue{}).Error; err != nil {
+				return fmt.Errorf("删除原有规格值失败: %v", err)
+			}
+			// 删除原有SKU
+			if err := tx.Where("goods_id = ?", goods.Id).Delete(&shop.ShopGoodsSku{}).Error; err != nil {
+				return fmt.Errorf("删除原有SKU失败: %v", err)
+			}
 
-	// 更新商品主图
-	if req.CoverImg != "" {
-		// 删除旧的主图
-		if err := tx.Where("goods_id = ? AND is_main = ?", goods.Id, 1).Delete(&shop.GoodsImageDO{}).Error; err != nil {
-			tx.Rollback()
+			// 创建默认SKU
+			skuCode := fmt.Sprintf("SKU%d%d%d", goods.Id, time.Now().Unix(), rand.Int63n(1000000))
+			sku := &shop.ShopGoodsSku{
+				GoodsId:       int64(goods.Id),
+				SkuCode:       skuCode,
+				SpecsJson:     "{}", // 单规格商品，规格为空
+				Price:         goods.Price,
+				OriginalPrice: goods.OriginalPrice,
+				CostPrice:     goods.CostPrice,
+				Stock:         goods.Stock,
+				Status:        1,
+				Sort:          0,
+				CreateTime:    time.Now(),
+				UpdateTime:    time.Now(),
+			}
+
+			if err := tx.Create(sku).Error; err != nil {
+				return fmt.Errorf("保存SKU失败: %v", err)
+			}
+		}
+
+		// 4. 处理图片
+		// 3.1 处理主图
+		// 先删除所有主图
+		if err := tx.Where("goods_id = ? AND position = ?", goods.Id, shop.ImagePositionMain).Delete(&shop.ShopGoodsImage{}).Error; err != nil {
 			return fmt.Errorf("删除旧主图失败: %v", err)
 		}
 
-		// 添加新的主图
-		mainImage := &shop.GoodsImageDO{
-			GoodsId:    goods.Id,
-			IsMain:     1,
-			Url:        req.CoverImg,
-			Type:       1,
-			Sort:       0,
-			CreateTime: time.Now(),
-			UpdateTime: time.Now(),
-		}
-		if err := tx.Create(mainImage).Error; err != nil {
-			tx.Rollback()
-			return fmt.Errorf("添加主图失败: %v", err)
-		}
-	}
-
-	// 更新标签关联
-	if len(req.TagIds) > 0 {
-		// 删除旧的标签关联
-		if err := tx.Where("goods_id = ?", goods.Id).Delete(&shop.ShopGoodsTagRel{}).Error; err != nil {
-			tx.Rollback()
-			return fmt.Errorf("删除旧标签失败: %v", err)
-		}
-
-		// 添加新的标签关联
-		for _, tagId := range req.TagIds {
-			rel := &shop.ShopGoodsTagRel{
+		// 只有当 CoverImg 不为空时才添加新的主图
+		if req.CoverImg != "" {
+			mainImage := &shop.ShopGoodsImage{
 				GoodsId:    goods.Id,
-				TagId:      tagId,
+				Position:   shop.ImagePositionMain,
+				Url:        req.CoverImg,
+				Sort:       0,
+				IsDelete:   0,
 				CreateTime: time.Now(),
+				UpdateTime: time.Now(),
 			}
-			if err := tx.Create(rel).Error; err != nil {
-				tx.Rollback()
-				return fmt.Errorf("添加标签关联失败: %v", err)
+			if err := tx.Create(mainImage).Error; err != nil {
+				return fmt.Errorf("添加主图失败: %v", err)
 			}
 		}
-	}
 
-	return tx.Commit().Error
+		// 3.2 处理商品图片列表
+		// 先删除所有非主图的图片
+		if err := tx.Where("goods_id = ? AND position != ?", goods.Id, shop.ImagePositionMain).Delete(&shop.ShopGoodsImage{}).Error; err != nil {
+			return fmt.Errorf("删除旧图片失败: %v", err)
+		}
+
+		// 添加新的图片列表，确保不添加主图
+		if len(req.Images) > 0 {
+			for _, img := range req.Images {
+				// 跳过主图位置的图片
+				if img.Position == shop.ImagePositionMain {
+					continue
+				}
+				image := &shop.ShopGoodsImage{
+					GoodsId:    goods.Id,
+					Position:   img.Position,
+					Url:        img.Url,
+					Sort:       img.Sort,
+					IsDelete:   0,
+					CreateTime: time.Now(),
+					UpdateTime: time.Now(),
+				}
+				if err := tx.Create(image).Error; err != nil {
+					return fmt.Errorf("添加图片失败: %v", err)
+				}
+			}
+		}
+
+		// 更新标签关联
+		if len(req.TagIds) > 0 {
+			// 删除旧的标签关联
+			if err := tx.Where("goods_id = ?", goods.Id).Delete(&shop.ShopGoodsTagRel{}).Error; err != nil {
+				return fmt.Errorf("删除旧标签失败: %v", err)
+			}
+
+			// 添加新的标签关联
+			for _, tagId := range req.TagIds {
+				rel := &shop.ShopGoodsTagRel{
+					GoodsId:    goods.Id,
+					TagId:      tagId,
+					CreateTime: time.Now(),
+				}
+				if err := tx.Create(rel).Error; err != nil {
+					return fmt.Errorf("添加标签关联失败: %v", err)
+				}
+			}
+		}
+
+		return nil // 让事务自动提交
+	})
 }
 
 // CreateGoods 创建商品
@@ -449,9 +574,6 @@ func (s *GoodsService) CreateGoods(req *dto.GoodsUpdateReq) error {
 			tx.Rollback()
 		}
 	}()
-
-	// 在事务开始时启用 SQL 日志
-	tx = tx.Debug()
 
 	// 创建商品基本信息
 	status, _ := strconv.ParseInt(req.Status, 10, 8)
@@ -467,6 +589,8 @@ func (s *GoodsService) CreateGoods(req *dto.GoodsUpdateReq) error {
 		Description:   req.Description,
 		SpecType:      int8(req.SpecType),
 		Status:        int8(status),
+		CreateTime:    time.Now(),
+		UpdateTime:    time.Now(),
 	}
 
 	if err := tx.Create(goods).Error; err != nil {
@@ -474,13 +598,24 @@ func (s *GoodsService) CreateGoods(req *dto.GoodsUpdateReq) error {
 		return fmt.Errorf("创建商品失败: %v", err)
 	}
 
+	// 创建商品详情
+	detail := &shop.ShopGoodsDetail{
+		GoodsId:    int(goods.Id),
+		DetailDesc: req.DetailDesc,
+		CreateTime: time.Now(),
+		UpdateTime: time.Now(),
+	}
+	if err := tx.Create(detail).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("创建商品详情失败: %v", err)
+	}
+
 	// 添加商品主图
 	if req.CoverImg != "" {
-		mainImage := &shop.GoodsImageDO{
+		mainImage := &shop.ShopGoodsImage{
 			GoodsId:    goods.Id,
-			IsMain:     1,
+			Position:   shop.ImagePositionMain,
 			Url:        req.CoverImg,
-			Type:       1,
 			Sort:       0,
 			CreateTime: time.Now(),
 			UpdateTime: time.Now(),
@@ -506,189 +641,72 @@ func (s *GoodsService) CreateGoods(req *dto.GoodsUpdateReq) error {
 		}
 	}
 
-	return tx.Commit().Error
-}
-
-// SaveGoods 保存商品
-func (s *GoodsService) SaveGoods(req *dto.GoodsUpdateReq) error {
-	// 打印接收到的参数
-	reqJSON, _ := json.MarshalIndent(req, "", "  ")
-	fmt.Printf("接收到的商品保存请求参数:\n%s\n", string(reqJSON))
-
-	return db.DB.WnAdmin.Transaction(func(tx *gorm.DB) error {
-		// 1. 保存商品基本信息
-		status, _ := strconv.ParseInt(req.Status, 10, 8)
-		goods := &shop.GoodsDO{
-			Id:            req.GoodsId,
-			Name:          req.GoodsName,
-			CategoryId:    req.CategoryId,
-			BrandId:       req.BrandId,
-			SupplierId:    req.SupplierId,
-			Price:         req.Price,
-			OriginalPrice: req.OriginalPrice,
-			Stock:         req.Stock,
-			Sort:          req.Sort,
-			Description:   req.Description,
-			SpecType:      int8(req.SpecType),
-			Status:        int8(status),
-		}
-
-		if err := tx.Save(goods).Error; err != nil {
-			return fmt.Errorf("保存商品基本信息失败: %v", err)
-		}
-
-		// 2. 处理规格信息
-		if req.SpecType == 1 && len(req.SpecGroups) > 0 {
-			fmt.Printf("规格组数量: %d\n", len(req.SpecGroups))
-			for i, group := range req.SpecGroups {
-				fmt.Printf("规格组[%d]: ID=%d, Name=%s, 规格值数量=%d\n",
-					i, group.ID, group.Name, len(group.Values))
-
-				// 打印规格值
-				for j, value := range group.Values {
-					fmt.Printf("  规格值[%d]: ID=%d, Name=%s, Value=%s, Sort=%d\n",
-						j, value.ID, value.Name, value.Value, value.Sort)
-				}
-			}
-
-			// 打印SKU信息
-			fmt.Printf("SKU列表数量: %d\n", len(req.SkuList))
-			for i, sku := range req.SkuList {
-				specsJSON, _ := json.MarshalIndent(sku.Specs, "", "  ")
-				fmt.Printf("SKU[%d]: ID=%d, Price=%.2f, Stock=%d\n规格信息:\n%s\n",
-					i, sku.ID, sku.Price, sku.Stock, string(specsJSON))
-			}
-
-			// 删除原有规格和规格值
-			if err := tx.Where("goods_id = ?", goods.Id).Delete(&shop.ShopGoodsSpec{}).Error; err != nil {
-				return fmt.Errorf("删除原有规格失败: %v", err)
-			}
-			if err := tx.Where("goods_id = ?", goods.Id).Delete(&shop.ShopGoodsSpecValue{}).Error; err != nil {
-				return fmt.Errorf("删除原有规格值失败: %v", err)
-			}
-			// 删除原有SKU
-			if err := tx.Where("goods_id = ?", goods.Id).Delete(&shop.ShopGoodsSku{}).Error; err != nil {
-				return fmt.Errorf("删除原有SKU失败: %v", err)
-			}
-
-			// 保存新的规格和规格值
-			for _, group := range req.SpecGroups {
-				// 打印规格组信息
-				fmt.Printf("正在保存规格组: Name=%s\n", group.Name)
-
-				spec := &shop.ShopGoodsSpec{
-					GoodsId:    goods.Id,
-					Name:       group.Name,
-					Sort:       group.Sort,
-					IsDelete:   0,
-					CreateTime: time.Now(),
-					UpdateTime: time.Now(),
-				}
-
-				if err := tx.Create(spec).Error; err != nil {
-					fmt.Printf("保存规格组失败: %v\n", err)
-					return fmt.Errorf("保存规格失败: %v", err)
-				}
-				fmt.Printf("规格组保存成功，获得ID: %d\n", spec.Id)
-
-				// 保存规格值
-				for _, value := range group.Values {
-					fmt.Printf("正在保存规格值: Name=%s, SpecId=%d\n", value.Name, spec.Id)
-
-					specValue := &shop.ShopGoodsSpecValue{
-						GoodsId:   goods.Id,
-						SpecId:    spec.Id,
-						Value:     value.Name,
-						Sort:      value.Sort,
-						CreatedAt: time.Now(),
-						UpdatedAt: time.Now(),
-					}
-
-					if err := tx.Create(specValue).Error; err != nil {
-						fmt.Printf("SQL: %v\n", tx.ToSQL(func(tx *gorm.DB) *gorm.DB {
-							return tx.Create(specValue)
-						}))
-						fmt.Printf("Error: %v\n", err)
-						return fmt.Errorf("保存规格值失败: %v", err)
-					}
-					fmt.Printf("规格值保存成功\n")
-				}
-			}
-
-			// 保存SKU列表
-			if len(req.SkuList) > 0 {
-				for _, skuData := range req.SkuList {
-					// 将规格信息转换为JSON字符串
-					specsJSON, err := json.Marshal(skuData.Specs)
-					if err != nil {
-						return fmt.Errorf("序列化SKU规格信息失败: %v", err)
-					}
-
-					sku := &shop.ShopGoodsSku{
-						GoodsId:       int64(goods.Id),
-						SkuCode:       fmt.Sprintf("SKU%d%d", goods.Id, time.Now().UnixNano()),
-						SpecsJson:     string(specsJSON),
-						Price:         skuData.Price,
-						OriginalPrice: goods.OriginalPrice,
-						CostPrice:     goods.CostPrice,
-						Stock:         skuData.Stock,
-						Status:        1,
-						Sort:          0,
-						CreateTime:    time.Now(),
-						UpdateTime:    time.Now(),
-					}
-
-					if err := tx.Create(sku).Error; err != nil {
-						return fmt.Errorf("保存SKU失败: %v", err)
-					}
-				}
-			}
-		}
-
-		// 3. 处理商品图片
-		if req.CoverImg != "" {
-			// 删除旧的主图
-			if err := tx.Where("goods_id = ? AND is_main = ?", goods.Id, 1).Delete(&shop.GoodsImageDO{}).Error; err != nil {
-				return fmt.Errorf("删除旧主图失败: %v", err)
-			}
-
-			// 添加新的主图
-			mainImage := &shop.GoodsImageDO{
+	// 如果是多规格商品，保存规格信息
+	if req.SpecType == 2 && len(req.SpecGroups) > 0 {
+		// 保存规格组
+		for _, group := range req.SpecGroups {
+			specGroup := &shop.ShopGoodsSpec{
 				GoodsId:    goods.Id,
-				IsMain:     1,
-				Url:        req.CoverImg,
-				Type:       1,
-				Sort:       0,
+				Name:       group.Name,
+				Sort:       group.Sort,
 				CreateTime: time.Now(),
 				UpdateTime: time.Now(),
 			}
-			if err := tx.Create(mainImage).Error; err != nil {
-				return fmt.Errorf("添加主图失败: %v", err)
-			}
-		}
-
-		// 4. 处理商品标签
-		if len(req.TagIds) > 0 {
-			// 删除旧的标签关联
-			if err := tx.Where("goods_id = ?", goods.Id).Delete(&shop.ShopGoodsTagRel{}).Error; err != nil {
-				return fmt.Errorf("删除旧标签失败: %v", err)
+			if err := tx.Create(specGroup).Error; err != nil {
+				tx.Rollback()
+				return fmt.Errorf("创建规格组失败: %v", err)
 			}
 
-			// 添加新的标签关联
-			for _, tagId := range req.TagIds {
-				rel := &shop.ShopGoodsTagRel{
-					GoodsId:    goods.Id,
-					TagId:      tagId,
-					CreateTime: time.Now(),
+			// 保存规格值
+			for _, value := range group.Values {
+				specValue := &shop.ShopGoodsSpecValue{
+					GoodsId:   goods.Id,
+					SpecId:    specGroup.Id,
+					Value:     value.Value,
+					Sort:      value.Sort,
+					CreatedAt: time.Now(),
+					UpdatedAt: time.Now(),
 				}
-				if err := tx.Create(rel).Error; err != nil {
-					return fmt.Errorf("添加标签关联失败: %v", err)
+				if err := tx.Create(specValue).Error; err != nil {
+					tx.Rollback()
+					return fmt.Errorf("创建规格值失败: %v", err)
 				}
 			}
 		}
 
-		return nil
-	})
+		// 保存 SKU 列表
+		if len(req.SkuList) > 0 {
+			for _, sku := range req.SkuList {
+				specsJson, err := json.Marshal(sku.Specs)
+				if err != nil {
+					tx.Rollback()
+					return fmt.Errorf("序列化规格数据失败: %v", err)
+				}
+
+				skuCode := fmt.Sprintf("SKU%d%d%d", goods.Id, time.Now().Unix(), rand.Int63n(1000000))
+				skuData := &shop.ShopGoodsSku{
+					GoodsId:       goods.Id,
+					SkuCode:       skuCode,
+					SpecsJson:     string(specsJson),
+					Price:         sku.Price,
+					OriginalPrice: goods.OriginalPrice,
+					CostPrice:     goods.CostPrice,
+					Stock:         sku.Stock,
+					Status:        1,
+					Sort:          0,
+					Image:         sku.Image,
+					CreateTime:    time.Now(),
+					UpdateTime:    time.Now(),
+				}
+
+				if err := tx.Create(skuData).Error; err != nil {
+					return fmt.Errorf("保存SKU失败: %v", err)
+				}
+			}
+		}
+	}
+
+	return tx.Commit().Error
 }
 
 func (s *GoodsService) GetByID(id int64) (*shop.GoodsDO, error) {
@@ -700,7 +718,7 @@ func (s *GoodsService) GetByID(id int64) (*shop.GoodsDO, error) {
 	}
 
 	// 如果是多规格商品，查询规格信息
-	if goods.SpecType == 1 {
+	if goods.SpecType == 2 {
 		// 查询规格组
 		var specGroups []*shop.ShopGoodsSpec
 		if err := db.DB.WnAdmin.Where("goods_id = ? AND is_delete = 0", id).
@@ -740,7 +758,7 @@ func (s *GoodsService) GetByID(id int64) (*shop.GoodsDO, error) {
 	}
 
 	// 查询商品图片
-	var images []*shop.GoodsImageDO
+	var images []*shop.ShopGoodsImage
 	if err := db.DB.WnAdmin.Where("goods_id = ?", id).Find(&images).Error; err != nil {
 		return nil, err
 	}

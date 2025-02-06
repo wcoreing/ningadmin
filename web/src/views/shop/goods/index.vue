@@ -78,27 +78,11 @@
       </el-form>
     </el-card>
 
-    <!-- 状态标签页 -->
-    <div class="status-tabs">
-      <el-radio-group v-model="activeStatus" @change="handleStatusChange">
-        <el-radio-button label="">全部(0)</el-radio-button>
-        <el-radio-button label="1">销售中(133)</el-radio-button>
-        <el-radio-button label="2">仓库中(9)</el-radio-button>
-        <el-radio-button label="3">已售罄(38)</el-radio-button>
-        <el-radio-button label="4">库存预警(13)</el-radio-button>
-        <el-radio-button label="5">回收站(176)</el-radio-button>
-        <el-radio-button label="6">待审核(48)</el-radio-button>
-        <el-radio-button label="7">审核未通过(1)</el-radio-button>
-        <el-radio-button label="8">强制下架(0)</el-radio-button>
-      </el-radio-group>
-    </div>
+ 
 
     <!-- 操作按钮 -->
     <div class="table-operations">
       <el-button type="primary" @click="handleAdd">添加商品</el-button>
-      <el-button>批量下架</el-button>
-      <el-button>导出</el-button>
-      <el-button>批量设置</el-button>
     </div>
 
     <!-- 表格 -->
@@ -110,19 +94,37 @@
     >
       <el-table-column type="selection" width="55" />
       <el-table-column label="商品ID" prop="goodsId" width="80" />
-      <el-table-column label="商品图" width="80">
+      <el-table-column label="商品图片" width="100">
         <template #default="{ row }">
           <el-image
-            :src="row.coverImg"
-            :preview-src-list="[row.coverImg]"
-            fit="cover"
             style="width: 50px; height: 50px"
-          />
+            :src="row.coverImg"
+            fit="cover"
+          >
+            <template #error>
+              <div class="image-slot">
+                <el-icon><Picture /></el-icon>
+              </div>
+            </template>
+          </el-image>
         </template>
       </el-table-column>
       <el-table-column label="商品名称" prop="goodsName" min-width="200" show-overflow-tooltip />
-      <el-table-column label="商品来源" prop="source" width="100" />
-      <el-table-column label="商品类型" prop="type" width="100" />
+      <el-table-column label="商品分类" prop="categoryName" width="120" show-overflow-tooltip />
+      <el-table-column label="供应商" prop="supplierName" width="120" show-overflow-tooltip />
+      <el-table-column label="品牌" prop="brandName" width="120" show-overflow-tooltip />
+      <el-table-column label="标签" width="120" show-overflow-tooltip>
+        <template #default="{ row }">
+          <el-tag 
+            v-for="(tag, index) in row.tagNames" 
+            :key="index"
+            size="small"
+            style="margin-right: 4px"
+          >
+            {{ tag }}
+          </el-tag>
+        </template>
+      </el-table-column>
       <el-table-column label="商品售价" prop="price" width="100">
         <template #default="{ row }">
           <span class="price">{{ row.price }}</span>
@@ -202,7 +204,7 @@ import { getBrandList } from '@/api/shop/brand'
 import { getTagList } from '@/api/shop/tag'
 import { getSupplierList } from '@/api/shop/supplier'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { ArrowDown } from '@element-plus/icons-vue'
+import { ArrowDown, Picture } from '@element-plus/icons-vue'
 import GoodsForm from './components/GoodsForm.vue'
 
 // 查询参数
@@ -264,7 +266,6 @@ const formatGoodsData = (list) => {
   }
   
   return list.map(item => {
-    console.log('格式化单个商品数据:', item) // 添加调试日志
     return {
       goodsId: item.goodsId,
       goodsName: item.name,
@@ -281,7 +282,11 @@ const formatGoodsData = (list) => {
       type: item.type === 1 ? '普通商品' : '虚拟商品',
       source: '自营',
       description: item.description || '', // 确保有值
-      tagIds: item.tagIds || []
+      tagIds: item.tagIds || [],
+      categoryName: item.categoryName,
+      supplierName: item.supplierName,
+      brandName: item.brandName,
+      tagNames: item.tagNames || []
     }
   })
 }
@@ -503,6 +508,17 @@ onMounted(() => {
     &::before {
       content: '¥';
     }
+  }
+
+  .image-slot {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+    background: #f5f7fa;
+    color: #909399;
+    font-size: 20px;
   }
 }
 </style> 
