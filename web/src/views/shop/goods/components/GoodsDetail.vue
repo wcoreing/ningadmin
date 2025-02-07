@@ -21,7 +21,7 @@
 </template>
 
 <script setup>
-import { ref, shallowRef, onBeforeUnmount } from 'vue'
+import { ref, shallowRef, onBeforeUnmount, watch } from 'vue'
 import '@wangeditor/editor/dist/css/style.css'
 import { Editor, Toolbar } from '@wangeditor/editor-for-vue'
 import { ElMessage } from 'element-plus'
@@ -30,6 +30,29 @@ const props = defineProps({
   formData: {
     type: Object,
     required: true
+  }
+})
+
+// 处理 HTML 内容，确保所有图片都有最大宽度属性
+const processHtml = (html) => {
+  const div = document.createElement('div')
+  div.innerHTML = html
+  
+  // 处理所有图片
+  div.querySelectorAll('img').forEach(img => {
+    if (!img.style.maxWidth) {
+      img.style.maxWidth = '100%'
+    }
+  })
+  
+  return div.innerHTML
+}
+
+// 监听 detailDesc 的变化
+watch(() => props.formData.detailDesc, (newVal) => {
+  if (newVal) {
+    // 处理内容并更新
+    props.formData.detailDesc = processHtml(newVal)
   }
 })
 
@@ -46,6 +69,14 @@ const editorConfig = {
   autoFocus: false,
   scroll: false,
   maxLength: 99999,
+  // 添加 parseHtml 配置
+  parseHtml: (elem) => {
+    // 处理图片元素
+    if (elem.tagName === 'IMG') {
+      elem.style.maxWidth = '100%'
+    }
+    return elem
+  },
   MENU_CONF: {
     uploadImage: {
       // 上传配置
@@ -71,9 +102,9 @@ const editorConfig = {
           if (res.code === 200) {
             const imageUrl = import.meta.env.VITE_IMG_URL + res.data.url
             console.log('上传成功:', imageUrl)
-            // 使用编辑器实例插入图片
+            // 修改插入图片的方式
             const editor = editorRef.value
-            editor.dangerouslyInsertHtml(`<img src="${imageUrl}" alt="${file.name}">`)
+            editor.dangerouslyInsertHtml(`<img src="${imageUrl}" alt="${file.name}" style="max-width:100%">`)
           } else {
             ElMessage.error(res.msg || '上传失败')
           }

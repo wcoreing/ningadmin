@@ -8,8 +8,41 @@
     @close="previewVisible = false"
   />
 
+  <!-- 上传文件弹窗 -->
+  <el-dialog
+    v-model="uploadVisible"
+    title="上传文件"
+    width="500px"
+    :append-to-body="true"
+    :destroy-on-close="false"
+    :close-on-click-modal="false"
+    :show-close="true"
+    @close="handleDialogClose"
+  >
+    <el-upload
+      class="file-uploader"
+      :http-request="customUpload"
+      :show-file-list="true"
+      :on-success="handleUploadSuccess"
+      :on-error="handleUploadError"
+      :before-upload="beforeUpload"
+      multiple
+      drag
+    >
+      <el-icon class="el-icon--upload"><upload-filled /></el-icon>
+      <div class="el-upload__text">
+        将文件拖到此处，或<em>点击上传</em>
+      </div>
+      <template #tip>
+        <div class="el-upload__tip">
+          支持常见图片格式，单个文件不超过 10MB
+        </div>
+      </template>
+    </el-upload>
+  </el-dialog>
+
   <template v-if="standalone">
-    <div class="file-manager">
+    <div class="file-manager" @paste="handlePaste">
       <!-- 左侧分类树 -->
       <div class="category-tree">
         <div class="tree-header">
@@ -44,12 +77,32 @@
 
       <!-- 右侧内容区 -->
       <div class="content-area">
+        <!-- 添加粘贴提示 -->
+        <div class="paste-tip">
+          <el-alert
+            title="支持直接粘贴图片文件(Ctrl+V)"
+            type="info"
+            :closable="false"
+            show-icon
+          />
+        </div>
+
         <!-- 顶部工具栏 -->
         <div class="toolbar">
           <div class="left">
             <el-button-group class="main-actions">
-              <el-button type="primary" @click="handleUpload">
+              <el-button 
+                type="primary" 
+                @click="handleUpload"
+                ref="uploadBtn"
+              >
                 <el-icon><Upload /></el-icon>上传文件
+              </el-button>
+              <el-button 
+                @click="handleBatchMove" 
+                :disabled="!selectedFiles.length"
+              >
+                <el-icon><FolderAdd /></el-icon>移动到分类
               </el-button>
               <el-button @click="handleRemove" :disabled="!selectedFiles.length">
                 <el-icon><Delete /></el-icon>删除
@@ -233,17 +286,51 @@
           />
         </div>
       </div>
+
+      <!-- 移动到分类的对话框 -->
+      <el-dialog
+        v-model="moveDialogVisible"
+        title="移动到分类"
+        width="400px"
+      >
+        <el-tree
+          ref="moveTreeRef"
+          :data="categoryTree"
+          :props="{ label: 'name' }"
+          node-key="id"
+          default-expand-all
+          highlight-current
+          @node-click="handleMoveToCategory"
+        >
+          <template #default="{ node, data }">
+            <div class="category-node">
+              <el-icon><component :is="data.icon || 'Folder'" /></el-icon>
+              <span>{{ node.label }}</span>
+            </div>
+          </template>
+        </el-tree>
+        <template #footer>
+          <div class="dialog-footer">
+            <el-button @click="moveDialogVisible = false">取消</el-button>
+            <el-button type="primary" @click="moveDialogVisible = false">
+              确定
+            </el-button>
+          </div>
+        </template>
+      </el-dialog>
     </div>
   </template>
   <template v-else>
     <el-dialog
       v-model="dialogVisible"
-      title="附件管理"
-      width="95%"
-      :before-close="handleClose"
+      title="文件管理"
+      width="70%"
+      :fullscreen="false"
+      :close-on-click-modal="false"
+      :close-on-press-escape="false"
       class="file-manager-dialog"
     >
-      <div class="file-manager">
+      <div class="file-manager" @paste="handlePaste">
         <!-- 左侧分类树 -->
         <div class="category-tree">
           <div class="tree-header">
@@ -278,18 +365,35 @@
 
         <!-- 右侧内容区 -->
         <div class="content-area">
+          <!-- 添加粘贴提示 -->
+          <div class="paste-tip">
+            <el-alert
+              title="支持直接粘贴图片文件(Ctrl+V)"
+              type="info"
+              :closable="false"
+              show-icon
+            />
+          </div>
+
           <!-- 顶部工具栏 -->
           <div class="toolbar">
             <div class="left">
               <el-button-group class="main-actions">
-                <el-button type="primary" @click="handleUpload">
+                <el-button 
+                  type="primary" 
+                  @click="handleUpload"
+                  ref="uploadBtn"
+                >
                   <el-icon><Upload /></el-icon>上传文件
+                </el-button>
+                <el-button 
+                  @click="handleBatchMove" 
+                  :disabled="!selectedFiles.length"
+                >
+                  <el-icon><FolderAdd /></el-icon>移动到分类
                 </el-button>
                 <el-button @click="handleRemove" :disabled="!selectedFiles.length">
                   <el-icon><Delete /></el-icon>删除
-                </el-button>
-                <el-button @click="handleDownload" :disabled="!selectedFiles.length">
-                  <el-icon><Download /></el-icon>下载
                 </el-button>
               </el-button-group>
             </div>
@@ -469,36 +573,7 @@
         </div>
       </div>
 
-      <!-- 上传文件弹窗 -->
-      <el-dialog
-        v-model="uploadVisible"
-        title="上传文件"
-        width="500px"
-        append-to-body
-      >
-        <el-upload
-          class="file-uploader"
-          :http-request="customUpload"
-          :show-file-list="true"
-          :on-success="handleUploadSuccess"
-          :on-error="handleUploadError"
-          :before-upload="beforeUpload"
-          multiple
-          drag
-        >
-          <el-icon class="el-icon--upload"><upload-filled /></el-icon>
-          <div class="el-upload__text">
-            将文件拖到此处，或<em>点击上传</em>
-          </div>
-          <template #tip>
-            <div class="el-upload__tip">
-              支持常见图片格式，单个文件不超过 10MB
-            </div>
-          </template>
-        </el-upload>
-      </el-dialog>
-
-      <!-- 移动文件弹窗 -->
+      <!-- 移动到分类的对话框 -->
       <el-dialog
         v-model="moveVisible"
         title="移动到"
@@ -539,7 +614,7 @@
 .file-manager-dialog {
   :deep(.el-dialog__body) {
     padding: 0;
-    height: calc(90vh - 120px);
+    height: calc(60vh - 120px);
   }
 
   :deep(.el-dialog__header) {
@@ -832,14 +907,88 @@
     }
   }
 }
+
+// 添加粘贴提示
+.paste-tip {
+  padding: 4px 8px;
+  margin-bottom: 0;
+  background: #f5f7fa;
+  
+  :deep(.el-alert) {
+    margin: 0;
+    padding: 4px 8px;
+    background: transparent;
+    border: none;
+    
+    .el-alert__content {
+      padding: 0 4px;
+    }
+    
+    .el-alert__icon {
+      font-size: 14px;
+    }
+    
+    .el-alert__title {
+      font-size: 12px;
+      line-height: 1.2;
+      color: var(--el-text-color-secondary);
+    }
+  }
+}
+
+// 移动分类对话框样式
+.el-dialog {
+  :deep(.el-tree) {
+    background: none;
+    
+    .el-tree-node__content {
+      height: 32px;
+    }
+  }
+  
+  .category-node {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    
+    .el-icon {
+      font-size: 16px;
+      color: var(--el-text-color-secondary);
+    }
+  }
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+// 确保上传对话框样式在最外层
+.el-dialog {
+  :deep(.el-dialog__body) {
+    padding: 20px;
+  }
+}
+
+.file-uploader {
+  :deep(.el-upload) {
+    width: 100%;
+  }
+  
+  :deep(.el-upload-dragger) {
+    width: 100%;
+    height: 200px;
+  }
+}
 </style>
 
 <script setup>
-import { ref, onMounted, watch, computed } from 'vue'
+import { ref, onMounted, watch, computed, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ElImageViewer } from 'element-plus'
 import { Folder, Upload, Delete, Search, Document, UploadFilled, Grid, List, ArrowDown, FolderAdd, View, Check, Select, ZoomIn } from '@element-plus/icons-vue'
-import { getFileList, deleteFile, getFileCategories, uploadFile } from '@/api/common/upload'
+import { getFileList, deleteFile, getFileCategories, uploadFile, moveFiles } from '@/api/common/upload'
 import { getToken } from '@/utils/auth'
 import dayjs from 'dayjs'
 
@@ -909,8 +1058,12 @@ const canConfirm = computed(() => {
 // 添加当前选中的分类ID
 const currentCategoryId = ref(null)
 
-// 添加一个变量来跟踪上传完成的文件数量
-const uploadingCount = ref(0)
+// 添加移动对话框的状态
+const moveDialogVisible = ref(false)
+const moveTreeRef = ref(null)
+
+// 修改上传相关的变量和方法
+const uploadBtn = ref(null)
 
 // 获取分类树数据
 const getCategoryTree = async () => {
@@ -988,13 +1141,14 @@ const handleCurrentChange = (val) => {
 
 // 处理上传
 const handleUpload = () => {
+  console.log('handleUpload called')
   uploadVisible.value = true
+  console.log('uploadVisible:', uploadVisible.value) // 添加调试日志
 }
 
 // 自定义上传方法
 const customUpload = async (options) => {
   try {
-    uploadingCount.value++
     const formData = new FormData()
     formData.append('file', options.file)
     if (currentCategoryId.value) {
@@ -1006,8 +1160,6 @@ const customUpload = async (options) => {
   } catch (error) {
     console.error('上传失败:', error)
     options.onError(error)
-  } finally {
-    uploadingCount.value--
   }
 }
 
@@ -1022,12 +1174,8 @@ const beforeUpload = (file) => {
 
 // 修改上传成功的处理方法
 const handleUploadSuccess = (response) => {
-  // 只在所有文件都上传完成时显示一次提示
-  if (uploadingCount.value === 0) {
-    ElMessage.success('上传成功')
-    uploadVisible.value = false
-    getFiles()
-  }
+  uploadVisible.value = false
+  getFiles()
 }
 
 const handleUploadError = () => {
@@ -1199,10 +1347,29 @@ const handleMove = () => {
   moveVisible.value = true
 }
 
-const handleMoveToCategory = (data) => {
-  console.log('移动到分类:', data)
-  moveVisible.value = false
-  // TODO: 调用移动文件接口
+const handleMoveToCategory = async (data) => {
+  if (data.id === 'all') {
+    ElMessage.warning('不能移动到全部文件分类')
+    return
+  }
+
+  try {
+    // 批量移动文件
+    await moveFiles({
+      fileIds: selectedFiles.value,
+      categoryId: data.id
+    })
+    
+    ElMessage.success('移动成功')
+    moveDialogVisible.value = false
+    selectedFiles.value = [] // 清空选择
+    // 刷新分类树数据
+    getCategoryTree()
+    getFiles() // 刷新文件列表
+  } catch (error) {
+    console.error('移动失败:', error)
+    ElMessage.error('移动失败')
+  }
 }
 
 // 修改图片预览处理方法
@@ -1266,15 +1433,63 @@ const getUploadData = () => {
 onMounted(() => {
   if (props.standalone) {
     getCategoryTree()
-    getFiles()  // pageSize 已经是 30 了，直接获取文件列表
+    getFiles()
   }
 })
 
-// 监听 pageSize 变化
-watch(pageSize, (newSize) => {
-  getFiles({
-    page: 1,
-    page_size: newSize
-  })
+// 处理粘贴事件
+const handlePaste = async (e) => {
+  // 阻止事件冒泡，防止重复触发
+  e.stopPropagation()
+  e.preventDefault()
+  
+  const items = e.clipboardData?.items
+  if (!items) return
+  
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i]
+    
+    // 处理图片文件
+    if (item.type.indexOf('image') !== -1) {
+      const file = item.getAsFile()
+      if (!file) continue
+      
+      // 创建上传的表单数据
+      const formData = new FormData()
+      formData.append('file', file)
+      if (currentCategoryId.value) {
+        formData.append('category_id', currentCategoryId.value)
+      }
+      
+      try {
+        // 调用上传接口
+        const res = await uploadFile(formData)
+        if (res) {
+          ElMessage.success('粘贴上传成功')
+          getFiles() // 刷新文件列表
+        }
+      } catch (error) {
+        console.error('粘贴上传失败:', error)
+        ElMessage.error('粘贴上传失败')
+      }
+    }
+  }
+}
+
+// 处理批量移动按钮点击
+const handleBatchMove = () => {
+  if (!selectedFiles.value.length) return
+  moveDialogVisible.value = true
+}
+
+// 处理对话框关闭
+const handleDialogClose = () => {
+  console.log('dialog closed')
+  uploadVisible.value = false
+}
+
+// 添加监听器
+watch(uploadVisible, (newVal) => {
+  console.log('uploadVisible changed:', newVal)
 })
 </script> 

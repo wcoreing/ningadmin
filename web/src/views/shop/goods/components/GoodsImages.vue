@@ -27,7 +27,7 @@
     </el-form-item>
 
     <!-- 商品图片 -->
-    <el-form-item label="商品图片" prop="images">
+    <el-form-item label="详情轮播图" prop="images">
       <div class="image-list">
         <div
           v-for="(img, index) in normalImages"
@@ -104,7 +104,7 @@ const normalImages = computed(() => {
   // 打印调试信息
   console.log('商品图片数据:', props.formData.images)
   // 只返回 position 为 0 的普通图片
-  return props.formData.images.filter(img => img.position === IMAGE_POSITIONS.NORMAL)
+  return props.formData.images.filter(img => img.position === IMAGE_POSITIONS.DETAIL)
 })
 
 const openFileManager = (type) => {
@@ -128,7 +128,7 @@ const handleImageSelect = (files) => {
     // 添加普通图片，position 设置为 0
     const newImages = fileData.map(file => ({
       url: file.url,
-      position: IMAGE_POSITIONS.NORMAL, // 这里 NORMAL 是 0
+      position: IMAGE_POSITIONS.DETAIL, // 这里 NORMAL 是 0
       sort: props.formData.images.length
     }))
     props.formData.images.push(...newImages)

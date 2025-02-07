@@ -20,3 +20,9 @@ type FileVO struct {
 	Type         string `json:"type"`
 	CreateTime   string `json:"createTime"`
 }
+
+// MoveFilesReq 移动文件请求参数
+type MoveFilesReq struct {
+	FileIds    []int64 `json:"file_ids" binding:"required"`    // 文件ID列表
+	CategoryId int64   `json:"category_id" binding:"required"` // 目标分类ID
+}

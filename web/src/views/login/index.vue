@@ -153,7 +153,7 @@ const handleLogin = async () => {
       // 登录成功提示
       ElMessage.success('登录成功')
       // 跳转到首页
-      location.href = '/'
+      location.href = '/dashboard'
     }
   } catch (error) {
     console.error('登录失败:', error)

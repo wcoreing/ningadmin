@@ -112,3 +112,27 @@ func (c *FileController) CategoryTree(ctx *gin.Context) {
 
 	response.OkWithData(result, ctx)
 }
+
+// MoveFiles 批量移动文件到指定分类
+// @Summary 批量移动文件
+// @Tags 文件管理
+// @Accept json
+// @Produce json
+// @Param data body common.MoveFilesReq true "移动文件请求参数"
+// @Success 200 {object} response.Response
+// @Router /files/move [post]
+func (c *FileController) MoveFiles(ctx *gin.Context) {
+	var req common.MoveFilesReq
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		response.FailWithMessage(ERROR, "参数错误", ctx)
+		return
+	}
+
+	err := c.fileService.MoveFiles(&req)
+	if err != nil {
+		response.FailWithMessage(ERROR, err.Error(), ctx)
+		return
+	}
+
+	response.Ok(ctx)
+}

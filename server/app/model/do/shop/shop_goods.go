@@ -2,7 +2,6 @@ package shop
 
 import (
 	"fmt"
-	"strconv"
 	"wnadmin/app/model/dto"
 	"wnadmin/app/provider/db"
 
@@ -36,6 +35,7 @@ type GoodsDO struct {
 	IsDelete      int8      `gorm:"column:is_delete" json:"isDelete"`           // 是否删除
 	CreateTime    time.Time `gorm:"column:create_time" json:"createTime"`       // 创建时间
 	UpdateTime    time.Time `gorm:"column:update_time" json:"updateTime"`       // 更新时间
+	CoverImg      string    `gorm:"-" json:"coverImg"`
 
 	// 关联字段，不映射到数据库
 	Images     []*ShopGoodsImage `gorm:"-" json:"images"`     // 商品图片列表
@@ -108,45 +108,43 @@ func (g *GoodsDO) GetGoodsList(req *dto.GoodsListReq) ([]GoodsDO, int64, error) 
 	var (
 		list  []GoodsDO
 		total int64
+		db    = g.Query()
 	)
 
-	query := g.Query().Where("is_delete = ?", 0)
-
-	// 添加查询条件
+	// 构建查询条件
 	if req.Name != "" {
-		// 尝试将name转换为ID
-		if id, err := strconv.ParseInt(req.Name, 10, 64); err == nil {
-			// ID搜索
-			query = query.Where("id = ?", id)
-		} else {
-			// 名称或关键字搜索
-			query = query.Where("name LIKE ?", "%"+req.Name+"%")
-		}
+		db = db.Where("name LIKE ?", "%"+req.Name+"%")
 	}
-
-	if req.CategoryId > 0 {
-		query = query.Where("category_id = ?", req.CategoryId)
+	if len(req.CategoryIds) > 0 {
+		db = db.Where("category_id IN ?", req.CategoryIds)
 	}
 	if req.SupplierId > 0 {
-		query = query.Where("supplier_id = ?", req.SupplierId)
+		db = db.Where("supplier_id = ?", req.SupplierId)
 	}
 	if req.BrandId > 0 {
-		query = query.Where("brand_id = ?", req.BrandId)
+		db = db.Where("brand_id = ?", req.BrandId)
 	}
 	if req.Status != "" {
-		query = query.Where("status = ?", req.Status)
+		db = db.Where("status = ?", req.Status)
 	}
 
 	// 统计总数
-	if err := query.Count(&total).Error; err != nil {
+	if err := db.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
 	// 获取分页数据
-	err := query.Offset((req.PageNum - 1) * req.PageSize).
+	err := db.Offset((req.PageNum - 1) * req.PageSize).
 		Limit(req.PageSize).
 		Order("create_time DESC").
 		Find(&list).Error
 
 	return list, total, err
+}
+
+type ShopGoods struct {
+	Id       uint    `json:"id" gorm:"primaryKey"`
+	Name     string  `json:"name"`
+	CoverImg string  `json:"coverImg" gorm:"column:url"`
+	Price    float64 `json:"price"`
 }

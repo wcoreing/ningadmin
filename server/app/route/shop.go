@@ -49,5 +49,17 @@ func RegisterShopRoutes(apiGroup *gin.RouterGroup) {
 		{
 			supplierGroup.GET("/list", supplierController.List)
 		}
+
+		// Banner管理
+		bannerController := shop.NewBannerController()
+		bannerGroup := shopGroup.Group("/banner")
+		{
+			bannerGroup.GET("/list", bannerController.GetBannerList)            // 获取Banner列表
+			bannerGroup.GET("/position", bannerController.GetBannersByPosition) // 获取指定位置的Banner列表
+			bannerGroup.POST("/create", bannerController.CreateBanner)          // 创建Banner
+			bannerGroup.PUT("/update", bannerController.UpdateBanner)           // 更新Banner
+			bannerGroup.DELETE("/delete/:id", bannerController.DeleteBanner)    // 删除Banner
+			bannerGroup.PUT("/status/:id", bannerController.ChangeBannerStatus) // 修改Banner状态
+		}
 	}
 }

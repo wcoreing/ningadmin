@@ -1,12 +1,14 @@
 package file
 
 import (
+	"errors"
 	"mime/multipart"
 	"path"
 	"time"
 	"wnadmin/app/common/utils"
 	"wnadmin/app/model/do/SystemDB"
 	"wnadmin/app/model/dto/common"
+	"wnadmin/app/provider/db"
 )
 
 // Service 文件服务
@@ -218,4 +220,20 @@ func buildTree(categories []SystemDB.FileCategory) []common.FileCategoryTreeVO {
 	}
 
 	return build(0)
+}
+
+// MoveFiles 批量移动文件到指定分类
+func (s *Service) MoveFiles(req *common.MoveFilesReq) error {
+	// 检查分类是否存在
+	var category SystemDB.FileCategory
+	if err := db.DB.WnAdmin.Where("id = ?", req.CategoryId).First(&category).Error; err != nil {
+		return errors.New("分类不存在")
+	}
+
+	// 批量更新文件分类
+	err := db.DB.WnAdmin.Model(&SystemDB.File{}).
+		Where("id IN ?", req.FileIds).
+		Update("category_id", req.CategoryId).Error
+
+	return err
 }

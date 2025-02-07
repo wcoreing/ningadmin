@@ -5,6 +5,7 @@ import (
 	"wnadmin/app/controller/common"
 	"wnadmin/app/controller/entry"
 	"wnadmin/app/controller/form"
+	"wnadmin/app/controller/shop"
 	"wnadmin/app/controller/system"
 	"wnadmin/app/middleware"
 
@@ -133,10 +134,24 @@ func Handle(engine *gin.Engine) {
 				fileGroup.GET("", fileController.List)
 				fileGroup.DELETE("/:id", fileController.Delete)
 				fileGroup.GET("/categories", fileController.CategoryTree)
+				fileGroup.POST("/move", fileController.MoveFiles)
 			}
 
 			// 注册商城相关路由
 			RegisterShopRoutes(apiGroup)
+
+			// 注册商品分类路由
+			categoryController := shop.NewCategoryController()
+			shopGroup := apiGroup.Group("/shop")
+			{
+				categoryGroup := shopGroup.Group("/categories")
+				{
+					categoryGroup.GET("", categoryController.List)          // 获取分类列表
+					categoryGroup.POST("", categoryController.Create)       // 创建分类
+					categoryGroup.PUT("/:id", categoryController.Update)    // 更新分类
+					categoryGroup.DELETE("/:id", categoryController.Delete) // 删除分类
+				}
+			}
 		}
 	}
 

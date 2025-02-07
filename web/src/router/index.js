@@ -64,7 +64,7 @@ router.beforeEach(async (to, from, next) => {
 
   if (hasToken) {
     if (to.path === '/login') {
-      next({ path: '/' })
+      next({ path: '/dashboard' })
     } else {
       const hasUserInfo = userStore.userInfo && Object.keys(userStore.userInfo).length > 0
       console.log("hasUserInfo",hasUserInfo)

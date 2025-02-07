@@ -62,8 +62,8 @@
         </el-table-column>
         <el-table-column prop="type" label="类型" width="100">
           <template #default="{ row }">
-            <el-tag :type="row.type === 'menu' ? '' : 'info'">
-              {{ row.type === 'menu' ? '菜单' : '按钮' }}
+            <el-tag :type="row.type === 'menu' ? '' : (row.type === 'page' ? 'success' : 'info')">
+              {{ row.type === 'menu' ? '菜单' : (row.type === 'page' ? '页面' : '按钮') }}
             </el-tag>
           </template>
         </el-table-column>
@@ -131,6 +131,7 @@
           <el-radio-group v-model="menuForm.type">
             <el-radio label="menu">菜单</el-radio>
             <el-radio label="button">按钮</el-radio>
+            <el-radio label="page">页面</el-radio>
           </el-radio-group>
         </el-form-item>
         <el-form-item label="菜单名称" prop="name">

@@ -16,7 +16,7 @@ require (
 	github.com/spf13/viper v1.18.2
 	go.mongodb.org/mongo-driver v1.11.6
 	golang.org/x/text v0.21.0
-	gorm.io/driver/mysql v1.5.6
+	gorm.io/driver/mysql v1.5.7
 	gorm.io/driver/sqlserver v1.5.3
 	gorm.io/gen v0.3.26
 	gorm.io/gorm v1.25.9

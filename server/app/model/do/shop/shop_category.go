@@ -9,28 +9,28 @@ import (
 
 // ShopCategory 商品分类
 type ShopCategory struct {
-	ID         int64          `json:"id" gorm:"column:id;primaryKey;comment:分类ID"`
-	ParentId   int64          `json:"parentId" gorm:"column:parent_id;default:0;comment:父级ID"`
-	Name       string         `json:"name" gorm:"column:name;comment:分类名称"`
-	Icon       string         `gorm:"column:icon" json:"icon"`   // 分类图标
-	Image      string         `gorm:"column:image" json:"image"` // 分类图片
-	Level      int8           `gorm:"column:level" json:"level"` // 层级
-	Sort       int            `json:"sort" gorm:"column:sort;default:0;comment:排序"`
-	Status     int8           `json:"status" gorm:"column:status;default:1;comment:状态(0:禁用 1:启用)"`
-	IsDelete   int8           `json:"-" gorm:"column:is_delete;default:0;comment:是否删除"`
-	CreateTime time.Time      `json:"createTime" gorm:"column:create_time;autoCreateTime;comment:创建时间"`
-	UpdateTime time.Time      `json:"updateTime" gorm:"column:update_time;autoUpdateTime;comment:更新时间"`
-	Children   []ShopCategory `json:"children" gorm:"-"` // 子分类列表
+	ID         int64          `gorm:"column:id;primaryKey;autoIncrement" json:"id"`         // 分类ID
+	ParentId   int64          `gorm:"column:parent_id;not null;default:0" json:"parent_id"` // 父级ID
+	Name       string         `gorm:"column:name;not null" json:"name"`                     // 分类名称
+	Icon       string         `gorm:"column:icon" json:"icon"`                              // 分类图标
+	Image      string         `gorm:"column:image" json:"image"`                            // 分类图片
+	Level      int            `gorm:"column:level;not null;default:1" json:"level"`         // 层级
+	Sort       int            `gorm:"column:sort;not null;default:0" json:"sort"`           // 排序
+	Status     int            `gorm:"column:status;not null;default:1" json:"status"`       // 状态
+	IsDelete   int            `gorm:"column:is_delete;not null;default:0" json:"is_delete"` // 是否删除
+	CreateTime time.Time      `gorm:"column:create_time;autoCreateTime" json:"create_time"` // 创建时间
+	UpdateTime time.Time      `gorm:"column:update_time;autoUpdateTime" json:"update_time"` // 更新时间
+	Children   []ShopCategory `json:"children" gorm:"-"`                                    // 子分类列表
 }
 
 // TableName 表名
-func (ShopCategory) TableName() string {
+func (s *ShopCategory) TableName() string {
 	return "shop_category"
 }
 
-// Query 获取查询构建器
-func (c *ShopCategory) Query() *gorm.DB {
-	return db.DB.WnAdmin.Model(c).Where("is_delete = ?", 0)
+// Query 查询构造器
+func (s *ShopCategory) Query() *gorm.DB {
+	return db.DB.WnAdmin.Model(s)
 }
 
 // BuildTree 构建分类树

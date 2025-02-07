@@ -6,19 +6,21 @@
     <el-card class="filter-container">
       <el-form :inline="true" :model="queryParams" class="demo-form-inline">
         <el-form-item label="商品分类">
-          <el-select 
+          <el-tree-select
             v-model="queryParams.categoryId" 
             placeholder="请选择商品分类" 
             clearable
             class="filter-select"
-          >
-            <el-option
-              v-for="item in categoryOptions"
-              :key="item.id"
-              :label="item.name"
-              :value="item.id"
-            />
-          </el-select>
+            :data="categoryOptions"
+            :props="{
+              label: 'name',
+              value: 'id',
+              children: 'children'
+            }"
+            default-expand-all
+            check-strictly
+            node-key="id"
+          />
         </el-form-item>
         <el-form-item label="供应商">
           <el-select 
@@ -146,19 +148,8 @@
       <el-table-column label="操作" width="200" fixed="right">
         <template #default="{ row }">
           <el-button type="primary" link @click="handleEdit(row)">编辑</el-button>
-          <el-button type="primary" link @click="handlePreview(row)">预览</el-button>
-          <el-dropdown>
-            <el-button type="primary" link>
-              更多<el-icon class="el-icon--right"><arrow-down /></el-icon>
-            </el-button>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item @click="handleDelete(row)">删除</el-dropdown-item>
-                <el-dropdown-item>复制</el-dropdown-item>
-                <el-dropdown-item>分享</el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
+          <el-button type="primary" link @click="handleDelete(row)">删除</el-button>
+          
         </template>
       </el-table-column>
     </el-table>

@@ -24,6 +24,31 @@ func (s *GoodsService) GetGoodsList(req *dto.GoodsListReq) (*dto.PageResult, err
 		result = make([]dto.GoodsDTO, 0)
 	)
 
+	// 如果选择了分类，获取该分类及其所有子分类的ID
+	var categoryIds []int64
+	if req.CategoryId > 0 {
+		// 先添加当前分类ID
+		categoryIds = append(categoryIds, req.CategoryId)
+
+		// 查询所有子分类
+		var categories []shop.ShopCategory
+		if err := (&shop.ShopCategory{}).Query().Where("parent_id = ?", req.CategoryId).Find(&categories).Error; err == nil {
+			for _, category := range categories {
+				categoryIds = append(categoryIds, category.ID)
+				// 如果还有下一级，继续查询
+				var subCategories []shop.ShopCategory
+				if err := (&shop.ShopCategory{}).Query().Where("parent_id = ?", category.ID).Find(&subCategories).Error; err == nil {
+					for _, subCategory := range subCategories {
+						categoryIds = append(categoryIds, subCategory.ID)
+					}
+				}
+			}
+		}
+
+		// 修改查询条件，使用 IN 查询
+		req.CategoryIds = categoryIds
+	}
+
 	// 查询商品列表
 	if req.Name != "" {
 		// 尝试将name转换为ID

@@ -8,22 +8,28 @@
         :multiple="true"
         :page-size="pageSize"
         @select="handleSelect"
+        ref="fileManagerRef"
       />
     </el-card>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import FileManager from '@/components/FileManager/index.vue'
 
 const visible = ref(true)
 const uploadUrl = ref(import.meta.env.VITE_API_URL + '/common/upload')
 const pageSize = ref(55)
+const fileManagerRef = ref(null)
 
 const handleSelect = (files) => {
   console.log('选中的文件:', files)
 }
+
+onMounted(() => {
+  console.log('File page mounted')
+})
 </script>
 
 <style lang="scss" scoped>

@@ -2,15 +2,16 @@ package dto
 
 // GoodsListReq 商品列表请求参数
 type GoodsListReq struct {
-	PageNum    int    `form:"pageNum"`
-	PageSize   int    `form:"pageSize"`
-	Name       string `form:"name"`
-	GoodsId    int64  `form:"-"` // 用于ID搜索，不从表单获取
-	CategoryId int64  `form:"categoryId"`
-	SupplierId int64  `form:"supplierId"`
-	BrandId    int64  `form:"brandId"`
-	TagId      int64  `form:"tagId"`
-	Status     string `form:"status"`
+	PageNum     int     `json:"pageNum" form:"pageNum"`       // 页码
+	PageSize    int     `json:"pageSize" form:"pageSize"`     // 每页数量
+	Name        string  `json:"name" form:"name"`             // 商品名称
+	CategoryId  int64   `json:"categoryId" form:"categoryId"` // 分类ID
+	CategoryIds []int64 `json:"-" form:"-"`                   // 分类ID列表(内部使用)
+	SupplierId  int64   `json:"supplierId" form:"supplierId"` // 供应商ID
+	BrandId     int64   `json:"brandId" form:"brandId"`       // 品牌ID
+	TagId       int64   `json:"tagId" form:"tagId"`           // 标签ID
+	GoodsId     int64   `json:"-" form:"-"`                   // 商品ID(内部使用)
+	Status      string  `form:"status"`
 }
 
 // GoodsDTO 商品信息DTO

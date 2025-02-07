@@ -64,10 +64,11 @@ func GormMysqlByConfig(m model.Mysql) *gorm.DB {
 
 		go func() {
 			for {
-				time.Sleep(time.Second * 30) // 每30秒检查一次
+				time.Sleep(time.Second * 1) // 每30秒检查一次
 				err := sqlDB.Ping()
 				if err != nil {
 					// 发现连接异常，尝试重连
+					fmt.Println("mysql连接异常，尝试重连")
 					newDB, err := gorm.Open(mysql.New(mysqlConfig), gormConfig)
 					if err == nil {
 						// 重连成功，更新连接

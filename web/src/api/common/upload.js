@@ -61,4 +61,16 @@ export function deleteFile(id) {
     url: `/files/${id}`,
     method: 'delete'
   })
+}
+
+// 移动文件到分类
+export function moveFiles(data) {
+  return request({
+    url: '/files/move',
+    method: 'post',
+    data: {
+      file_ids: data.fileIds,
+      category_id: data.categoryId
+    }
+  })
 } 
