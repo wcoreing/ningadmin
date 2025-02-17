@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"wnadmin/app/model/do/shop"
 	"wnadmin/app/model/dto"
+	"wnadmin/app/provider/db"
 
 	"gorm.io/gorm"
 )
@@ -150,4 +151,47 @@ func (s *BannerService) ChangeBannerStatus(id int64, status int) error {
 
 	banner := &shop.ShopBanner{Id: id}
 	return banner.Query().Update("status", status).Error
+}
+
+// GetBannerInfo 获取Banner详情
+func (s *BannerService) GetBannerInfo(id int64) (*dto.BannerInfoResp, error) {
+	var banner shop.ShopBanner
+	if err := db.DB.WnAdmin.Where("id = ?", id).First(&banner).Error; err != nil {
+		return nil, err
+	}
+
+	info := &dto.BannerInfoResp{
+		Id:       banner.Id,
+		Title:    banner.Title,
+		Image:    banner.Image,
+		Url:      banner.Url,
+		Position: banner.Position,
+		Type:     banner.Type,
+		TargetId: banner.TargetId,
+		Sort:     banner.Sort,
+		Status:   banner.Status,
+	}
+
+	// 如果是商品类型且有目标ID，获取商品信息
+	if banner.Type == 1 && banner.TargetId > 0 {
+		var goods shop.GoodsDO
+		if err := db.DB.WnAdmin.Where("id = ?", banner.TargetId).First(&goods).Error; err == nil {
+			// 获取商品主图
+			var coverImg string
+			var image shop.ShopGoodsImage
+			if err := db.DB.WnAdmin.Where("goods_id = ? AND position = ?", goods.Id, 1).
+				First(&image).Error; err == nil {
+				coverImg = image.Url
+			}
+
+			info.GoodsInfo = &dto.GoodsBaseInfo{
+				GoodsId:  uint(goods.Id),
+				Name:     goods.Name,
+				CoverImg: coverImg,
+				Price:    goods.Price,
+			}
+		}
+	}
+
+	return info, nil
 }

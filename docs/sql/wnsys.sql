@@ -436,7 +436,7 @@ CREATE TABLE `shop_order`  (
   `receive_time` datetime NULL DEFAULT NULL COMMENT '收货时间',
   `finish_time` datetime NULL DEFAULT NULL COMMENT '完成时间',
   `cancel_time` datetime NULL DEFAULT NULL COMMENT '取消时间',
-  `status` tinyint(4) NOT NULL DEFAULT 0 COMMENT '订单状态(0:待付款 1:待发货 2:待收货 3:已完成 4:已取消)',
+  `status` varchar(20) NOT NULL DEFAULT 'pending' COMMENT '订单状态(pending:待付款 unshipped:待发货 shipped:待收货 completed:已完成 cancelled:已取消)',
   `cancel_reason` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '取消原因',
   `remark` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '订单备注',
   `is_delete` tinyint(4) NOT NULL DEFAULT 0 COMMENT '是否删除',

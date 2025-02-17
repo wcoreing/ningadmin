@@ -85,6 +85,22 @@
     <!-- 操作按钮 -->
     <div class="table-operations">
       <el-button type="primary" @click="handleAdd">添加商品</el-button>
+      <el-button 
+        type="primary" 
+        icon="Position" 
+        :disabled="selectedRows.length === 0"
+        @click="handleBatchMove"
+      >
+        批量移动
+      </el-button>
+      <el-button 
+        type="danger" 
+        icon="Delete"
+        :disabled="selectedRows.length === 0"
+        @click="handleBatchDelete"
+      >
+        批量删除
+      </el-button>
     </div>
 
     <!-- 表格 -->
@@ -139,17 +155,23 @@
         <template #default="{ row }">
           <el-switch
             v-model="row.status"
-            :active-value="'0'"
-            :inactive-value="'1'"
-            @change="handleStatusToggle(row)"
+            :active-value="1"
+            :inactive-value="0"
+            @change="(val) => handleStatusToggle(row)"
           />
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="200" fixed="right">
+      <el-table-column label="操作" width="180" fixed="right">
         <template #default="{ row }">
-          <el-button type="primary" link @click="handleEdit(row)">编辑</el-button>
-          <el-button type="primary" link @click="handleDelete(row)">删除</el-button>
-          
+          <el-button link type="primary" @click="handleEdit(row)">编辑</el-button>
+          <el-button link type="primary" @click="handleCopy(row)">复制</el-button>
+          <el-button 
+            link 
+            type="danger" 
+            @click="handleDelete(row)"
+          >
+            删除
+          </el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -178,6 +200,34 @@
       :upload-url="uploadUrl"
       @success="handleFormSuccess"
     />
+
+    <!-- 批量移动对话框 -->
+    <el-dialog
+      v-model="moveDialogVisible"
+      title="批量移动商品"
+      width="500px"
+    >
+      <el-form :model="moveForm" label-width="100px">
+        <el-form-item label="目标分类">
+          <el-cascader
+            v-model="moveForm.categoryId"
+            :options="categoryOptions"
+            :props="{ 
+              checkStrictly: true,
+              label: 'name',
+              value: 'id',
+              emitPath: false
+            }"
+            placeholder="请选择分类"
+            clearable
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="moveDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="confirmMove">确定</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -188,7 +238,10 @@ import {
   deleteGoods, 
   updateGoodsStatus, 
   getGoodsInfo,
-  updateGoods
+  updateGoods,
+  copyGoods,
+  batchMoveGoods,
+  batchDeleteGoods
 } from '@/api/shop/goods'
 import { getCategoryList } from '@/api/shop/category'
 import { getBrandList } from '@/api/shop/brand'
@@ -258,6 +311,7 @@ const formatGoodsData = (list) => {
   
   return list.map(item => {
     return {
+      ...item,
       goodsId: item.goodsId,
       goodsName: item.name,
       categoryId: item.categoryId,
@@ -269,7 +323,7 @@ const formatGoodsData = (list) => {
       sales: item.sales,
       stock: item.stock,
       sort: item.sort,
-      status: item.status.toString(),
+      status: Number(item.status), // 直接转换为数字
       type: item.type === 1 ? '普通商品' : '虚拟商品',
       source: '自营',
       description: item.description || '', // 确保有值
@@ -314,7 +368,10 @@ const getList = async () => {
     
     // 处理返回的数据
     if (res && res.list) {
-      goodsList.value = formatGoodsData(res.list)
+      goodsList.value = formatGoodsData(res.list).map(item => ({
+        ...item,
+        _isInitializing: true // 标记为初始化状态
+      }))
       total.value = res.total
     } else {
       console.warn('返回数据格式不正确:', res)
@@ -342,16 +399,25 @@ const handleStatusChange = (value) => {
 
 // 状态开关切换
 const handleStatusToggle = async (row) => {
+  const newStatus = Number(row.status)
+  console.log('切换状态:', {
+    goodsId: row.goodsId,
+    status: newStatus,
+    rawStatus: row.status,
+    typeof: typeof newStatus
+  })
   try {
     await updateGoodsStatus({
-      id: row.goodsId,
-      status: row.status
+      goodsId: row.goodsId,
+      status: newStatus || 0  // 确保不会发送 undefined 或 null
     })
-    ElMessage.success('状态更新成功')
+    ElMessage.success('修改成功')
   } catch (error) {
-    row.status = row.status === '0' ? '1' : '0'
-    ElMessage.error('状态更新失败')
-    console.error('状态更新失败:', error)
+    console.log('错误详情:', error.response?.data)
+    console.error('修改状态失败:', error)
+    // 切换失败时恢复原状态
+    row.status = Number(!newStatus)  // 使用取反操作
+    ElMessage.error('修改失败')
   }
 }
 
@@ -431,6 +497,26 @@ const handleDelete = (row) => {
   })
 }
 
+// 复制商品
+const handleCopy = (row) => {
+  ElMessageBox.prompt('请输入复制数量', '复制商品', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    inputPattern: /^[1-9]\d*$/,
+    inputErrorMessage: '请输入正整数',
+    inputValue: '1'
+  }).then(async ({ value }) => {
+    try {
+      await copyGoods(row.goodsId, parseInt(value))
+      ElMessage.success('复制成功')
+      getList()
+    } catch (error) {
+      console.error('复制商品失败:', error)
+      ElMessage.error('复制失败')
+    }
+  })
+}
+
 // 编辑相关的响应式变量
 const dialogVisible = ref(false)
 const dialogType = ref('add')
@@ -450,6 +536,55 @@ const handleSizeChange = (val) => {
 const handleCurrentChange = (val) => {
   queryParams.pageNum = val
   getList()
+}
+
+// 批量移动
+const moveDialogVisible = ref(false)
+const moveForm = ref({
+  categoryId: null
+})
+
+const handleBatchMove = () => {
+  moveForm.value.categoryId = null
+  moveDialogVisible.value = true
+}
+
+const confirmMove = async () => {
+  if (!moveForm.value.categoryId) {
+    ElMessage.warning('请选择目标分类')
+    return
+  }
+  
+  try {
+    const goodsIds = selectedRows.value.map(item => item.goodsId)
+    await batchMoveGoods({
+      goodsIds,
+      categoryId: moveForm.value.categoryId
+    })
+    ElMessage.success('移动成功')
+    moveDialogVisible.value = false
+    getList()
+  } catch (error) {
+    console.error('批量移动失败:', error)
+    ElMessage.error('移动失败')
+  }
+}
+
+// 批量删除
+const handleBatchDelete = () => {
+  ElMessageBox.confirm(`确认要删除选中的 ${selectedRows.value.length} 个商品吗?`, '提示', {
+    type: 'warning'
+  }).then(async () => {
+    try {
+      const goodsIds = selectedRows.value.map(item => item.goodsId)
+      await batchDeleteGoods(goodsIds)
+      ElMessage.success('删除成功')
+      getList()
+    } catch (error) {
+      console.error('批量删除失败:', error)
+      ElMessage.error('删除失败')
+    }
+  })
 }
 
 onMounted(() => {

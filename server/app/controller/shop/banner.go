@@ -161,3 +161,29 @@ func (c *BannerController) ChangeBannerStatus(ctx *gin.Context) {
 
 	response.Ok(ctx)
 }
+
+// GetBannerInfo 获取Banner详情
+// @Summary 获取Banner详情
+// @Description 获取Banner详情
+// @Tags Banner管理
+// @Accept json
+// @Produce json
+// @Param id path int true "Banner ID"
+// @Success 200 {object} response.Response{data=dto.BannerInfoResp} "成功"
+// @Router /shop/banner/info/{id} [get]
+func (c *BannerController) GetBannerInfo(ctx *gin.Context) {
+	id := ctx.Param("id")
+	bannerId, err := strconv.ParseInt(id, 10, 64)
+	if err != nil {
+		response.FailWithMessage(400, "Banner ID格式错误", ctx)
+		return
+	}
+
+	info, err := c.bannerService.GetBannerInfo(bannerId)
+	if err != nil {
+		response.FailWithMessage(500, err.Error(), ctx)
+		return
+	}
+
+	response.OkWithData(info, ctx)
+}

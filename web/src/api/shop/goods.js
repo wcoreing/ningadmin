@@ -4,9 +4,12 @@ const api = {
   GoodsList: '/shop/goods/list',
   GoodsInfo: '/shop/goods/info',
   GoodsUpdate: '/shop/goods/update',
-  GoodsDelete: '/shop/goods/delete',
+  GoodsDelete: '/shop/goods',
   GoodsStatus: '/shop/goods/status',
-  GoodsCreate: '/shop/goods/create'
+  GoodsCreate: '/shop/goods/create',
+  GoodsCopy: '/shop/goods/copy',
+  GoodsMove: '/shop/goods/move',
+  GoodsBatchDelete: '/shop/goods/batch'
 }
 
 // 获取商品列表
@@ -90,5 +93,32 @@ export function createGoods(data) {
     url: api.GoodsCreate,
     method: 'post',
     data
+  })
+}
+
+// 复制商品
+export function copyGoods(id, count) {
+  return request({
+    url: `${api.GoodsCopy}/${id}`,
+    params: { count },
+    method: 'post'
+  })
+}
+
+// 批量移动商品
+export function batchMoveGoods(data) {
+  return request({
+    url: api.GoodsMove,
+    method: 'put',
+    data
+  })
+}
+
+// 批量删除商品
+export function batchDeleteGoods(goodsIds) {
+  return request({
+    url: api.GoodsBatchDelete,
+    method: 'delete',
+    data: { goodsIds }
   })
 } 

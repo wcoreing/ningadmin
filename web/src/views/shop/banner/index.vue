@@ -54,14 +54,15 @@
         row-key="id"
         border
       >
-        <el-table-column label="ID" prop="id" width="60" align="center" />
-        <el-table-column label="标题" prop="title" min-width="200" align="left" show-overflow-tooltip />
+        <el-table-column label="ID" prop="id" width="80" align="center" />
+        <el-table-column label="标题" prop="title" min-width="120" align="left" show-overflow-tooltip />
         <el-table-column label="图片" width="100" align="center">
           <template #default="{ row }">
-            <img
+            <el-image
+              style="width: 50px; height: 50px"
               :src="row.image"
-              class="banner-image"
-              @click="handlePreviewImage(row.image)"
+              :preview-src-list="[row.image]"
+              fit="cover"
             />
           </template>
         </el-table-column>
@@ -75,8 +76,18 @@
             {{ getTypeLabel(row.type) }}
           </template>
         </el-table-column>
-        <el-table-column label="排序" prop="sort" width="60" align="center" />
-        <el-table-column label="状态" width="80" align="center">
+        <el-table-column label="目标商品" min-width="150" show-overflow-tooltip>
+          <template #default="{ row }">
+            <template v-if="row.type === 1 && row.goodsInfo">
+              {{ row.goodsInfo.name }}
+            </template>
+            <template v-else-if="row.type === 3">
+              {{ row.url }}
+            </template>
+          </template>
+        </el-table-column>
+        <el-table-column label="排序" prop="sort" width="80" align="center" />
+        <el-table-column label="状态" width="100" align="center">
           <template #default="{ row }">
             <el-switch
               v-model="row.status"
@@ -87,7 +98,7 @@
           </template>
         </el-table-column>
         <el-table-column label="创建时间" prop="createTime" width="160" align="center" />
-        <el-table-column label="操作" width="120" align="center" fixed="right">
+        <el-table-column label="操作" width="180" align="center" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="handleUpdate(row)">编辑</el-button>
             <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
@@ -208,7 +219,7 @@
 <script setup>
 import { ref, onMounted, watch, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getBannerList, createBanner, updateBanner, deleteBanner, changeBannerStatus } from '@/api/shop/banner'
+import { getBannerList, createBanner, updateBanner, deleteBanner, changeBannerStatus, getBannerInfo } from '@/api/shop/banner'
 import { getGoodsList } from '@/api/shop/goods'
 import FileManager from '@/components/FileManager/index.vue'
 import GoodsSelector from '@/components/GoodsSelector/index.vue'
@@ -287,7 +298,7 @@ const fileManagerVisible = ref(false)
 // 商品选择相关
 const goodsSelectVisible = ref(false)
 const targetInfo = ref(null)
-const selectedIds = computed(() => form.value.targetId ? [form.value.targetId] : [])
+const selectedIds = ref([])
 
 // 选择图片
 const handleSelectImage = () => {
@@ -367,10 +378,32 @@ const handleUpdate = async (row) => {
   const id = row.id || row
   open.value = true
   title.value = '修改Banner'
-  Object.assign(form.value, row)
-  // 如果是商品类型，使用列表中的商品信息
-  if (row.type === 1 && row.targetId) {
-    targetInfo.value = row.goodsInfo
+  try {
+    // 通过详情接口获取完整的 Banner 信息
+    const res = await getBannerInfo(id)
+    form.value = {
+      id: res.id,
+      title: res.title,
+      image: res.image,
+      url: res.url,
+      position: res.position,
+      type: res.type,
+      targetId: res.targetId,
+      sort: res.sort,
+      status: res.status
+    }
+    // 如果有商品信息，设置到 targetInfo
+    if (res.type === 1 && res.goodsInfo) {
+      targetInfo.value = {
+        goodsId: res.goodsInfo.goodsId,
+        name: res.goodsInfo.name,
+        coverImg: res.goodsInfo.coverImg,
+        price: res.goodsInfo.price
+      }
+    }
+  } catch (error) {
+    console.error('获取Banner详情失败:', error)
+    ElMessage.error('获取Banner详情失败')
   }
 }
 
@@ -467,6 +500,7 @@ const closePreview = () => {
 
 // 打开商品选择
 const handleSelectTarget = () => {
+  selectedIds.value = form.value.targetId ? [form.value.targetId] : []
   goodsSelectVisible.value = true
 }
 
@@ -474,6 +508,7 @@ const handleSelectTarget = () => {
 const handleGoodsSelect = (goods) => {
   form.value.targetId = goods.goodsId
   targetInfo.value = goods
+  selectedIds.value = [goods.goodsId]
   goodsSelectVisible.value = false
 }
 
@@ -481,6 +516,7 @@ const handleGoodsSelect = (goods) => {
 const clearSelectedGoods = () => {
   form.value.targetId = undefined
   targetInfo.value = null
+  selectedIds.value = []
 }
 
 // 页面加载时获取列表数据

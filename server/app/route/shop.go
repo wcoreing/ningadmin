@@ -9,24 +9,40 @@ import (
 // RegisterShopRoutes 注册商城相关路由
 func RegisterShopRoutes(apiGroup *gin.RouterGroup) {
 	// 商品管理路由组
-	goodsController := &shop.GoodsController{}
+	goodsController := shop.NewGoodsController()
 	shopGroup := apiGroup.Group("/shop")
 	{
 		goodsGroup := shopGroup.Group("/goods")
 		{
-			goodsGroup.POST("/create", goodsController.Create)       // 创建商品
-			goodsGroup.GET("/list", goodsController.List)            // 商品列表
-			goodsGroup.GET("/info/:id", goodsController.GetInfo)     // 商品详情
-			goodsGroup.PUT("/update", goodsController.Update)        // 更新商品
-			goodsGroup.DELETE("/delete/:id", goodsController.Delete) // 删除商品
-			goodsGroup.PUT("/status", goodsController.UpdateStatus)  // 更新状态
+			goodsGroup.GET("/list", goodsController.List)
+			goodsGroup.GET("/info/:id", goodsController.GetInfo)
+			goodsGroup.POST("", goodsController.Create)
+			goodsGroup.PUT("", goodsController.Update)
+			goodsGroup.DELETE("/:id", goodsController.Delete)
+			goodsGroup.PUT("/status", goodsController.UpdateStatus)
+			goodsGroup.POST("/copy/:id", goodsController.CopyGoods)
+			goodsGroup.PUT("/move", goodsController.BatchMove)
+			goodsGroup.PUT("/update", goodsController.Update)
+			goodsGroup.DELETE("/batch", goodsController.BatchDelete)
+		}
+
+		// 订单管理
+		orderController := shop.NewOrderController()
+		orderGroup := shopGroup.Group("/order")
+		{
+			orderGroup.GET("/list", orderController.GetOrderList)
+			orderGroup.PUT("/ship", orderController.ShipOrder)
+			orderGroup.POST("/logistics", orderController.GetLogisticsTrack)
 		}
 
 		// 商品分类
 		categoryController := shop.NewCategoryController()
-		categoryGroup := shopGroup.Group("/category")
+		categoryGroup := shopGroup.Group("/categories")
 		{
-			categoryGroup.GET("/list", categoryController.List)
+			categoryGroup.GET("", categoryController.List)
+			categoryGroup.POST("", categoryController.Create)
+			categoryGroup.PUT("/:id", categoryController.Update)
+			categoryGroup.DELETE("/:id", categoryController.Delete)
 		}
 
 		// 商品标签
@@ -56,6 +72,7 @@ func RegisterShopRoutes(apiGroup *gin.RouterGroup) {
 		{
 			bannerGroup.GET("/list", bannerController.GetBannerList)            // 获取Banner列表
 			bannerGroup.GET("/position", bannerController.GetBannersByPosition) // 获取指定位置的Banner列表
+			bannerGroup.GET("/info/:id", bannerController.GetBannerInfo)
 			bannerGroup.POST("/create", bannerController.CreateBanner)          // 创建Banner
 			bannerGroup.PUT("/update", bannerController.UpdateBanner)           // 更新Banner
 			bannerGroup.DELETE("/delete/:id", bannerController.DeleteBanner)    // 删除Banner

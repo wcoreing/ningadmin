@@ -37,10 +37,10 @@ type GoodsDTO struct {
 	CoverImg      string   `json:"coverImg"`
 }
 
-// GoodsStatusReq 商品状态更新请求
+// GoodsStatusReq 商品状态修改请求
 type GoodsStatusReq struct {
-	Id     int64  `json:"id" binding:"required"`
-	Status string `json:"status" binding:"required"`
+	GoodsId int64 `json:"goodsId" binding:"required"`
+	Status  int   `json:"status" binding:"gte=0,lte=1"`
 }
 
 // GoodsImageUpdateItem 商品图片更新项

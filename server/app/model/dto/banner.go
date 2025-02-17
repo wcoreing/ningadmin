@@ -1,5 +1,19 @@
 package dto
 
+// BannerInfoResp Banner详情响应
+type BannerInfoResp struct {
+	Id        int64          `json:"id"`
+	Title     string         `json:"title"`
+	Image     string         `json:"image"`
+	Url       string         `json:"url"`
+	Position  int            `json:"position"`
+	Type      int            `json:"type"`
+	TargetId  int64          `json:"targetId"`
+	Sort      int            `json:"sort"`
+	Status    int            `json:"status"`
+	GoodsInfo *GoodsBaseInfo `json:"goodsInfo,omitempty"`
+}
+
 type BannerListReq struct {
 	Position int    `form:"position"`
 	Status   *int   `form:"status"`

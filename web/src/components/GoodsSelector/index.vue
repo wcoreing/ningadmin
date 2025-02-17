@@ -55,9 +55,10 @@
           >
             <div 
               class="goods-item"
-              :class="{ 'is-selected': isSelected(item) }"
-              @click="handleSelect(item)"
             >
+              <div class="use-button" @click.stop="handleSelect(item)">
+                <el-icon><Check /></el-icon>
+              </div>
               <el-image 
                 :src="item.coverImg" 
                 fit="contain"
@@ -77,9 +78,6 @@
                   <span class="price">¥{{ item.price }}</span>
                   <span class="stock">库存: {{ item.stock }}</span>
                 </div>
-              </div>
-              <div class="select-mask" v-if="isSelected(item)">
-                <el-icon><Select /></el-icon>
               </div>
             </div>
           </el-col>
@@ -114,7 +112,7 @@ import { ref, computed, watch } from 'vue'
 import { getGoodsList } from '@/api/shop/goods'
 import { getCategoryList } from '@/api/shop/category'
 import { ElMessage } from 'element-plus'
-import { Picture, Select, Search } from '@element-plus/icons-vue'
+import { Picture, Select, Search, Check } from '@element-plus/icons-vue'
 
 const props = defineProps({
   modelValue: Boolean,
@@ -169,10 +167,6 @@ const getList = async () => {
     const res = await getGoodsList(queryParams.value)
     goodsList.value = res.list
     total.value = res.total
-    // 如果有选中商品，保持选中状态
-    if (selectedGoods.value.length > 0) {
-      const selected = selectedGoods.value[0]
-    }
   } catch (error) {
     console.error('获取商品列表失败:', error)
   }
@@ -289,26 +283,6 @@ const getGoodsDetail = async (id) => {
   }
 }
 
-// 监听选中ID变化
-watch(() => props.selectedIds, (newVal) => {
-  if (newVal && newVal.length > 0) {
-    // 获取所有选中商品的详情
-    const getSelectedGoods = async () => {
-      try {
-        const res = await getGoodsList({ ids: newVal })
-        if (res.list && res.list.length > 0) {
-          selectedGoods.value = res.list
-        }
-      } catch (error) {
-        console.error('获取商品详情失败:', error)
-      }
-    }
-    getSelectedGoods()
-  } else {
-    selectedGoods.value = []
-  }
-}, { immediate: true })
-
 // 初始化
 getCategories()
 getList()
@@ -334,14 +308,39 @@ getList()
       border: 1px solid #ebeef5;
       background-color: #fff;
 
+      .use-button {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        background: var(--el-color-primary);
+        color: #fff;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        font-size: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transition: opacity 0.3s;
+        z-index: 2;
+        
+        .el-icon {
+          font-size: 12px;
+        }
+        
+        &:hover {
+          transform: scale(1.1);
+        }
+      }
+
       &:hover {
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         transform: translateY(-2px);
-      }
-
-      &.is-selected {
-        border-color: var(--el-color-primary);
-        box-shadow: 0 0 0 2px var(--el-color-primary-light-8);
+        
+        .use-button {
+          opacity: 1;
+        }
       }
 
       .goods-image {
@@ -401,20 +400,6 @@ getList()
             font-size: 12px;
           }
         }
-      }
-
-      .select-mask {
-        position: absolute;
-        top: 8px;
-        right: 8px;
-        width: 24px;
-        height: 24px;
-        background: var(--el-color-primary);
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: #fff;
       }
     }
   }

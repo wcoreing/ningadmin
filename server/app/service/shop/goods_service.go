@@ -2,6 +2,7 @@ package shop
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/rand"
 	"strconv"
@@ -227,11 +228,10 @@ func (s *GoodsService) DeleteGoods(id int64) error {
 
 // UpdateGoodsStatus 更新商品状态
 func (s *GoodsService) UpdateGoodsStatus(id int64, status int8) error {
-	goodsDO := &shop.GoodsDO{
-		Id:     id,
-		Status: status,
-	}
-	return goodsDO.UpdateStatus()
+	// 更新状态
+	return db.DB.WnAdmin.Model(&shop.GoodsDO{}).
+		Where("is_delete = 0 AND id = ?", id).
+		Update("status", status).Error
 }
 
 // GetGoodsInfo 获取商品详情
@@ -801,4 +801,178 @@ func (s *GoodsService) GetByID(id int64) (*shop.GoodsDO, error) {
 	goods.TagIds = tagIds
 
 	return goods, nil
+}
+
+// CopyGoods 复制商品
+func (s *GoodsService) CopyGoods(goodsId int64, count int) error {
+	return db.DB.WnAdmin.Transaction(func(tx *gorm.DB) error {
+		// 1. 查询原商品信息
+		goods := &shop.GoodsDO{}
+		if err := tx.Where("id = ?", goodsId).First(goods).Error; err != nil {
+			return err
+		}
+
+		// 循环复制指定数量
+		for i := 0; i < count; i++ {
+			// 2. 复制商品基本信息
+			newGoods := *goods
+			newGoods.Id = 0
+			newGoods.Name = goods.Name + fmt.Sprintf("(副本%d)", i+1)
+			newGoods.Sales = 0        // 销量清零
+			newGoods.VirtualSales = 0 // 虚拟销量清零
+			newGoods.Status = 0       // 设置为下架状态(0:下架 1:上架)
+			newGoods.CreateTime = time.Now()
+			newGoods.UpdateTime = time.Now()
+
+			if err := tx.Create(&newGoods).Error; err != nil {
+				return err
+			}
+
+			// 3. 复制商品规格
+			specs := []shop.ShopGoodsSpec{}
+			if err := tx.Where("goods_id = ?", goodsId).Find(&specs).Error; err != nil {
+				return err
+			}
+
+			for _, spec := range specs {
+				newSpec := spec
+				newSpec.Id = 0
+				newSpec.GoodsId = newGoods.Id
+				newSpec.CreateTime = time.Now()
+				newSpec.UpdateTime = time.Now()
+				if err := tx.Create(&newSpec).Error; err != nil {
+					return err
+				}
+
+				// 复制规格值
+				specValues := []shop.ShopGoodsSpecValue{}
+				if err := tx.Where("spec_id = ?", spec.Id).Find(&specValues).Error; err != nil {
+					return err
+				}
+
+				for _, value := range specValues {
+					newValue := value
+					newValue.Id = 0
+					newValue.GoodsId = newGoods.Id
+					newValue.SpecId = newSpec.Id
+					newValue.CreatedAt = time.Now()
+					newValue.UpdatedAt = time.Now()
+					if err := tx.Create(&newValue).Error; err != nil {
+						return err
+					}
+				}
+			}
+			//复制sku
+			skus := []shop.ShopGoodsSku{}
+			if err := tx.Where("goods_id = ?", goodsId).Find(&skus).Error; err != nil {
+				return err
+			}
+
+			for _, sku := range skus {
+				newSku := sku
+				newSku.Id = 0
+				newSku.GoodsId = newGoods.Id
+				newSku.Stock = 0 // 库存清零
+				// newSku.Sales = 0 // 销量清零
+				newSku.CreateTime = time.Now()
+				newSku.UpdateTime = time.Now()
+				if err := tx.Create(&newSku).Error; err != nil {
+					return err
+				}
+			}
+
+			// 4. 复制商品图片
+			images := []shop.ShopGoodsImage{}
+			if err := tx.Where("goods_id = ?", goodsId).Find(&images).Error; err != nil {
+				return err
+			}
+
+			for _, image := range images {
+				newImage := image
+				newImage.Id = 0
+				newImage.GoodsId = newGoods.Id
+				newImage.CreateTime = time.Now()
+				if err := tx.Create(&newImage).Error; err != nil {
+					return err
+				}
+			}
+
+			// 5. 复制商品详情
+			detail := &shop.ShopGoodsDetail{}
+			if err := tx.Where("goods_id = ?", goodsId).First(detail).Error; err != nil && err != gorm.ErrRecordNotFound {
+				return err
+			}
+
+			if detail.Id > 0 {
+				newDetail := *detail
+				newDetail.Id = 0
+				newDetail.GoodsId = int(newGoods.Id)
+				newDetail.CreateTime = time.Now()
+				newDetail.UpdateTime = time.Now()
+				if err := tx.Create(&newDetail).Error; err != nil {
+					return err
+				}
+			}
+		}
+
+		return nil
+	})
+}
+
+// BatchMoveGoods 批量移动商品
+func (s *GoodsService) BatchMoveGoods(req *dto.GoodsBatchMoveReq) error {
+	return db.DB.WnAdmin.Transaction(func(tx *gorm.DB) error {
+		// 检查分类是否存在
+		var category shop.ShopCategory
+		if err := tx.Where("id = ?", req.CategoryId).First(&category).Error; err != nil {
+			return errors.New("目标分类不存在")
+		}
+
+		// 批量更新商品分类
+		if err := tx.Model(&shop.GoodsDO{}).
+			Where("id IN ?", req.GoodsIds).
+			Updates(map[string]interface{}{
+				"category_id": req.CategoryId,
+				"update_time": time.Now(),
+			}).Error; err != nil {
+			return err
+		}
+
+		return nil
+	})
+}
+
+// BatchDeleteGoods 批量删除商品
+func (s *GoodsService) BatchDeleteGoods(req *dto.GoodsBatchDeleteReq) error {
+	return db.DB.WnAdmin.Transaction(func(tx *gorm.DB) error {
+		// 删除商品及关联数据
+		for _, goodsId := range req.GoodsIds {
+			// 删除商品规格
+			if err := tx.Where("goods_id = ?", goodsId).Delete(&shop.ShopGoodsSpec{}).Error; err != nil {
+				return err
+			}
+
+			// 删除商品图片
+			if err := tx.Where("goods_id = ?", goodsId).Delete(&shop.ShopGoodsImage{}).Error; err != nil {
+				return err
+			}
+
+			// 删除商品详情
+			if err := tx.Where("goods_id = ?", goodsId).Delete(&shop.ShopGoodsDetail{}).Error; err != nil {
+				return err
+			}
+
+			// 删除商品标签关联
+			if err := tx.Where("goods_id = ?", goodsId).Delete(&shop.ShopGoodsTagRel{}).Error; err != nil {
+				return err
+			}
+
+			// 删除商品
+			if err := tx.Delete(&shop.GoodsDO{}, goodsId).Error; err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
 }

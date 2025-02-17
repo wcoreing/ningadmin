@@ -36,3 +36,4 @@ database: wnsys
 13 不要问找文件，自己找
 14 不要使用ts，使用js
 15 数据库操作要按规范，不要直接使用gorm，要使用model的Query方法
+16 数据库表结构写在docs\sql\wnsys.sql

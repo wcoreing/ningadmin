@@ -107,11 +107,11 @@ func (c *GoodsController) UpdateStatus(ctx *gin.Context) {
 
 	// 转换状态值为int8
 	status := int8(0)
-	if req.Status == "1" {
+	if req.Status == 1 {
 		status = 1
 	}
 
-	if err := c.goodsService.UpdateGoodsStatus(req.Id, status); err != nil {
+	if err := c.goodsService.UpdateGoodsStatus(req.GoodsId, status); err != nil {
 		response.FailWithMessage(201, "更新商品状态失败: "+err.Error(), ctx)
 		return
 	}
@@ -194,4 +194,84 @@ func (c *GoodsController) Create(ctx *gin.Context) {
 	}
 
 	response.OkWithMessage("创建成功", ctx)
+}
+
+// CopyGoods 复制商品
+// @Summary 复制商品
+// @Description 复制商品
+// @Tags 商品管理
+// @Accept json
+// @Produce json
+// @Param id path int true "商品ID"
+// @Success 200 {object} response.Response "成功"
+// @Router /shop/goods/copy/{id} [post]
+func (c *GoodsController) CopyGoods(ctx *gin.Context) {
+	id := ctx.Param("id")
+	goodsId, err := strconv.ParseInt(id, 10, 64)
+	if err != nil {
+		response.FailWithMessage(400, "商品ID格式错误", ctx)
+		return
+	}
+
+	// 获取复制数量
+	countStr := ctx.Query("count")
+	count, err := strconv.Atoi(countStr)
+	if err != nil || count < 1 {
+		count = 1 // 默认复制1份
+	}
+
+	if err := c.goodsService.CopyGoods(goodsId, count); err != nil {
+		response.FailWithMessage(500, err.Error(), ctx)
+		return
+	}
+
+	response.Ok(ctx)
+}
+
+// BatchMove 批量移动商品
+// @Summary 批量移动商品
+// @Description 批量移动商品到指定分类
+// @Tags 商品管理
+// @Accept json
+// @Produce json
+// @Param data body dto.GoodsBatchMoveReq true "移动信息"
+// @Success 200 {object} response.Response "成功"
+// @Router /shop/goods/move [put]
+func (c *GoodsController) BatchMove(ctx *gin.Context) {
+	var req dto.GoodsBatchMoveReq
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		response.FailWithMessage(400, "参数错误", ctx)
+		return
+	}
+
+	if err := c.goodsService.BatchMoveGoods(&req); err != nil {
+		response.FailWithMessage(500, err.Error(), ctx)
+		return
+	}
+
+	response.Ok(ctx)
+}
+
+// BatchDelete 批量删除商品
+// @Summary 批量删除商品
+// @Description 批量删除商品
+// @Tags 商品管理
+// @Accept json
+// @Produce json
+// @Param data body dto.GoodsBatchDeleteReq true "商品ID列表"
+// @Success 200 {object} response.Response "成功"
+// @Router /shop/goods/batch [delete]
+func (c *GoodsController) BatchDelete(ctx *gin.Context) {
+	var req dto.GoodsBatchDeleteReq
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		response.FailWithMessage(400, "参数错误", ctx)
+		return
+	}
+
+	if err := c.goodsService.BatchDeleteGoods(&req); err != nil {
+		response.FailWithMessage(500, err.Error(), ctx)
+		return
+	}
+
+	response.Ok(ctx)
 }

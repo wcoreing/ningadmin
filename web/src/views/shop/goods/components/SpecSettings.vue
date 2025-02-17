@@ -205,34 +205,36 @@ const showInput = (groupIndex) => {
   })
 }
 
-// 处理输入确认
+// 处理输入框失焦事件
 const handleInputConfirm = (groupIndex) => {
   const group = props.formData.specGroups[groupIndex]
   const inputValue = group.inputValue?.trim()
   if (inputValue) {
-    // 检查是否重复
-    const isDuplicate = group.values.some(item => item.name === inputValue)
-    if (!isDuplicate) {
-      // 确保 values 数组已初始化
-      if (!Array.isArray(group.values)) {
-        group.values = []
-      }
-      group.values.push({
-        id: Date.now(),
-        name: inputValue,
-        value: inputValue,
-        sort: group.values.length + 1
-      })
-      // 触发 SKU 列表更新
-      if (props.formData.specType === 2) {
-        updateSkuList()
-      }
-    } else {
-      ElMessage.warning('规格值不能重复')
+    if (group.values && group.values.some(item => item.name === inputValue)) {
+      ElMessage.warning('该规格值已存在')
+      return
+    }
+    
+    // 确保 values 数组已初始化
+    if (!Array.isArray(group.values)) {
+      group.values = []
+    }
+    group.values.push({
+      id: Date.now(),
+      name: inputValue,
+      value: inputValue,
+      sort: group.values.length + 1
+    })
+    // 触发 SKU 列表更新
+    if (props.formData.specType === 2) {
+      updateSkuList()
     }
   }
   group.inputVisible = false
   group.inputValue = ''
+  
+  // 更新规格组合
+  generateSpecCombinations()
 }
 
 // 移除规格值
