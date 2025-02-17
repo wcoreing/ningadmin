@@ -105,13 +105,7 @@ func (c *GoodsController) UpdateStatus(ctx *gin.Context) {
 		return
 	}
 
-	// 转换状态值为int8
-	status := int8(0)
-	if req.Status == 1 {
-		status = 1
-	}
-
-	if err := c.goodsService.UpdateGoodsStatus(req.GoodsId, status); err != nil {
+	if err := c.goodsService.UpdateGoodsStatus(req.GoodsId, int8(req.Status)); err != nil {
 		response.FailWithMessage(201, "更新商品状态失败: "+err.Error(), ctx)
 		return
 	}

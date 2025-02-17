@@ -61,7 +61,7 @@ type GoodsUpdateReq struct {
 	OriginalPrice float64                 `json:"originalPrice"`
 	Stock         int                     `json:"stock"`
 	Sort          int                     `json:"sort"`
-	Status        string                  `json:"status"`
+	Status        int                     `json:"status" binding:"oneof=0 1"`
 	Description   string                  `json:"description"`
 	CoverImg      string                  `json:"coverImg"`
 	TagIds        []int64                 `json:"tagIds"`
@@ -116,7 +116,7 @@ type GoodsInfoResp struct {
 	Weight        float64                 `json:"weight"`
 	Volume        float64                 `json:"volume"`
 	Sort          int                     `json:"sort"`
-	Status        string                  `json:"status"`
+	Status        int8                    `json:"status"`
 	Description   string                  `json:"description"`
 	CoverImg      string                  `json:"coverImg"`
 	TagIds        []int64                 `json:"tagIds"`
@@ -125,4 +125,15 @@ type GoodsInfoResp struct {
 	SpecGroups    []SpecGroup             `json:"specGroups"` // 规格组
 	SkuList       []Sku                   `json:"skuList"`    // SKU列表
 	DetailDesc    string                  `json:"detailDesc"` // 商品详情
+}
+
+// GoodsBatchMoveReq 商品批量移动请求
+type GoodsBatchMoveReq struct {
+	GoodsIds   []int64 `json:"goodsIds" binding:"required"`
+	CategoryId int64   `json:"categoryId" binding:"required"`
+}
+
+// GoodsBatchDeleteReq 商品批量删除请求
+type GoodsBatchDeleteReq struct {
+	GoodsIds []int64 `json:"goodsIds" binding:"required"`
 }

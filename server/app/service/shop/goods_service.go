@@ -268,7 +268,7 @@ func (s *GoodsService) GetGoodsInfo(id int64) (*dto.GoodsInfoResp, error) {
 		Weight:        goods.Weight,
 		Volume:        goods.Volume,
 		Sort:          goods.Sort,
-		Status:        strconv.FormatInt(int64(goods.Status), 10),
+		Status:        goods.Status,
 		Description:   goods.Description,
 		DetailDesc:    detail.DetailDesc,
 		SpecType:      goods.SpecType,
@@ -379,8 +379,7 @@ func (s *GoodsService) UpdateGoods(req *dto.GoodsUpdateReq) error {
 		goods.Sort = req.Sort
 		goods.Description = req.Description
 		goods.SpecType = int8(req.SpecType)
-		status, _ := strconv.ParseInt(req.Status, 10, 8)
-		goods.Status = int8(status)
+		goods.Status = int8(req.Status)
 
 		if err := tx.Save(goods).Error; err != nil {
 			return fmt.Errorf("更新商品失败: %v", err)
@@ -601,7 +600,6 @@ func (s *GoodsService) CreateGoods(req *dto.GoodsUpdateReq) error {
 	}()
 
 	// 创建商品基本信息
-	status, _ := strconv.ParseInt(req.Status, 10, 8)
 	goods := &shop.GoodsDO{
 		Name:          req.GoodsName,
 		CategoryId:    req.CategoryId,
@@ -613,7 +611,7 @@ func (s *GoodsService) CreateGoods(req *dto.GoodsUpdateReq) error {
 		Sort:          req.Sort,
 		Description:   req.Description,
 		SpecType:      int8(req.SpecType),
-		Status:        int8(status),
+		Status:        int8(req.Status),
 		CreateTime:    time.Now(),
 		UpdateTime:    time.Now(),
 	}

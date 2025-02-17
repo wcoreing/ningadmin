@@ -5,6 +5,7 @@ import (
 	"wnadmin/app/controller/common"
 	"wnadmin/app/controller/entry"
 	"wnadmin/app/controller/form"
+	"wnadmin/app/controller/shop"
 	"wnadmin/app/controller/system"
 	"wnadmin/app/middleware"
 
@@ -159,4 +160,14 @@ func Handle(engine *gin.Engine) {
 		}
 		c.Next()
 	})
+
+	// 分销管理
+	distribution := shop.NewDistributionController()
+	shopGroup := apiGroup.Group("/shop")
+	{
+		shopGroup.GET("/distribution/config", distribution.GetConfig)       // 获取分销配置
+		shopGroup.PUT("/distribution/config", distribution.UpdateConfig)    // 更新分销配置
+		shopGroup.GET("/distribution/list", distribution.ListDistributors)  // 分销员列表
+		shopGroup.PUT("/distribution/audit", distribution.AuditDistributor) // 审核分销员
+	}
 }

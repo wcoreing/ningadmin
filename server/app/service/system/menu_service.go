@@ -65,23 +65,23 @@ func (s *MenuService) UpdateMenu(req *dto.MenuDTO) error {
 			Update("sort", req.Sort).Error
 	}
 
-	menu := &SystemDB.MenuDO{
-		ID:            req.ID,
-		ParentID:      req.ParentID,
-		Type:          req.Type,
-		Name:          req.Name,
-		Icon:          req.Icon,
-		RoutePath:     req.RoutePath,
-		ComponentPath: req.ComponentPath,
-		Permission:    req.Permission,
-		Sort:          req.Sort,
-		Status:        req.Status,
-		UpdateBy:      req.Operator,
+	// 构建更新字段map
+	updateFields := map[string]interface{}{
+		"parent_id":       req.ParentID,
+		"permission_type": req.Type,
+		"permission_name": req.Name,
+		"icon":            req.Icon,
+		"route_path":      req.RoutePath,
+		"component_path":  req.ComponentPath,
+		"permission_code": req.Permission,
+		"sort":            req.Sort,
+		"status":          req.Status,
+		"update_by":       req.Operator,
 	}
 
 	// 检查权限标识是否存在
 	if req.Permission != "" {
-		exists, err := menu.CheckPermissionExists(req.Permission, req.ID)
+		exists, err := (&SystemDB.MenuDO{}).CheckPermissionExists(req.Permission, req.ID)
 		if err != nil {
 			return err
 		}
@@ -90,7 +90,9 @@ func (s *MenuService) UpdateMenu(req *dto.MenuDTO) error {
 		}
 	}
 
-	return menu.Update()
+	return db.DB.WnAdmin.Model(&SystemDB.MenuDO{}).
+		Where("permission_id = ?", req.ID).
+		Updates(updateFields).Error
 }
 
 // DeleteMenu 删除菜单

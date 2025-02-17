@@ -792,4 +792,54 @@ VALUES
 (NULL, (SELECT permission_id FROM (SELECT permission_id FROM sys_permission WHERE permission_code = 'system') AS p), 
 'menu', '文件管理', 'Folder', 'file', 'system/file/index', 'system:file:list', 6, '0', '0');
 
+-- 分销配置表
+CREATE TABLE `shop_distribution_config` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT 'ID',
+  `enabled` tinyint(1) NOT NULL DEFAULT '0' COMMENT '是否启用分销(0:关闭 1:开启)',
+  `level` tinyint(1) NOT NULL DEFAULT '1' COMMENT '分销层级(1:一级分销 2:二级分销)',
+  `mode` tinyint(1) NOT NULL DEFAULT '1' COMMENT '分销模式(1:指定分销 2:人人分销 3:满额分销)',
+  `apply_enabled` tinyint(1) NOT NULL DEFAULT '0' COMMENT '是否开启分销申请(0:关闭 1:开启)',
+  `bind_type` tinyint(1) NOT NULL DEFAULT '1' COMMENT '绑定方式(1:所有用户 2:新用户)',
+  `bind_mode` tinyint(1) NOT NULL DEFAULT '1' COMMENT '绑定模式(1:永久 2:有效期 3:临时)',
+  `poster_bg` varchar(255) DEFAULT NULL COMMENT '分销海报背景图',
+  `center_type` tinyint(1) NOT NULL DEFAULT '1' COMMENT '分销中心类型(1:普通版 2:专业版)',
+  `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+  `update_time` datetime DEFAULT NULL COMMENT '更新时间',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='分销配置表';
+
+-- 分销员表
+CREATE TABLE `shop_distributor` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT 'ID',
+  `user_id` bigint(20) NOT NULL COMMENT '用户ID',
+  `parent_id` bigint(20) DEFAULT NULL COMMENT '上级分销员ID',
+  `level` tinyint(1) NOT NULL DEFAULT '1' COMMENT '分销等级',
+  `status` tinyint(1) NOT NULL DEFAULT '0' COMMENT '状态(0:待审核 1:已通过 2:已拒绝)',
+  `total_income` decimal(10,2) NOT NULL DEFAULT '0.00' COMMENT '累计收益',
+  `total_orders` int(11) NOT NULL DEFAULT '0' COMMENT '累计订单数',
+  `bind_time` datetime DEFAULT NULL COMMENT '绑定时间',
+  `expire_time` datetime DEFAULT NULL COMMENT '到期时间',
+  `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+  `update_time` datetime DEFAULT NULL COMMENT '更新时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_user_id` (`user_id`),
+  KEY `idx_parent_id` (`parent_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='分销员表';
+
+-- 分销订单表
+CREATE TABLE `shop_distribution_order` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT 'ID',
+  `order_id` bigint(20) NOT NULL COMMENT '订单ID',
+  `distributor_id` bigint(20) NOT NULL COMMENT '分销员ID',
+  `level` tinyint(1) NOT NULL COMMENT '分销层级',
+  `commission` decimal(10,2) NOT NULL COMMENT '佣金金额',
+  `status` tinyint(1) NOT NULL DEFAULT '0' COMMENT '状态(0:待结算 1:已结算 2:已取消)',
+  `settle_time` datetime DEFAULT NULL COMMENT '结算时间',
+  `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+  `update_time` datetime DEFAULT NULL COMMENT '更新时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_order_id` (`order_id`),
+  KEY `idx_distributor_id` (`distributor_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='分销订单表';
+
 SET FOREIGN_KEY_CHECKS = 1;

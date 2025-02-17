@@ -17,29 +17,7 @@
           text-color="#fff"
           active-text-color="#409EFF"
         >
-          <!-- 遍历菜单数据生成菜单项 -->
-          <template v-for="menu in userStore.menuList" :key="menu.id">
-            <!-- 有子菜单 -->
-            <el-sub-menu v-if="menu.children && menu.children.length" :index="String(menu.id)">
-              <template #title>
-                <el-icon><component :is="menu.icon" /></el-icon>
-                <span>{{ menu.name }}</span>
-              </template>
-              <el-menu-item 
-                v-for="child in menu.children" 
-                :key="child.id"
-                :index="child.path"
-              >
-                {{ child.name }}
-              </el-menu-item>
-            </el-sub-menu>
-            
-            <!-- 无子菜单 -->
-            <el-menu-item v-else :index="menu.path">
-              <el-icon><component :is="menu.icon" /></el-icon>
-              <template #title>{{ menu.name }}</template>
-            </el-menu-item>
-          </template>
+          <recursive-menu :menu-list="userStore.menuList" />
         </el-menu>
       </el-aside>
 
@@ -86,6 +64,7 @@ import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { Monitor, Setting, Fold, Expand, Operation } from '@element-plus/icons-vue'
+import RecursiveMenu from '@/components/MenuItem/index.vue'
 import logoUrl from '@/assets/logo.jpg'
 
 const route = useRoute()

@@ -81,8 +81,8 @@
 
     <el-form-item label="商品状态" prop="status">
       <el-radio-group v-model="formData.status">
-        <el-radio :label="'0'">上架</el-radio>
-        <el-radio :label="'1'">下架</el-radio>
+        <el-radio :label="1">上架</el-radio>
+        <el-radio :label="0">下架</el-radio>
       </el-radio-group>
     </el-form-item>
 
