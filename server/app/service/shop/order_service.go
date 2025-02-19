@@ -6,6 +6,7 @@ import (
 	"wnadmin/app/model/do/shop"
 	"wnadmin/app/model/dto"
 	"wnadmin/app/provider/db"
+	"wnadmin/app/service/distribution"
 
 	"gorm.io/gorm"
 )
@@ -147,6 +148,29 @@ func (s *OrderService) ShipOrder(req *dto.OrderShipReq) error {
 			"logistics_company": req.LogisticsCompany,
 			"logistics_no":      req.LogisticsNo,
 		}).Error; err != nil {
+			return err
+		}
+
+		return nil
+	})
+}
+
+// CompleteOrder 完成订单
+func (s *OrderService) CompleteOrder(orderID uint) error {
+	return db.DB.WnAdmin.Transaction(func(tx *gorm.DB) error {
+		// 1. 更新订单状态
+		if err := tx.Model(&shop.ShopOrder{}).
+			Where("id = ?", orderID).
+			Updates(map[string]interface{}{
+				"status":      "completed",
+				"finish_time": time.Now(),
+			}).Error; err != nil {
+			return err
+		}
+
+		// 2. 处理分销收益
+		orderListener := distribution.NewOrderListenerService()
+		if err := orderListener.HandleOrderComplete(orderID); err != nil {
 			return err
 		}
 

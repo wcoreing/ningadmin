@@ -68,6 +68,7 @@
           </template>
         </el-table-column>
         <el-table-column prop="routePath" label="路由路径" min-width="150" show-overflow-tooltip />
+        <el-table-column prop="componentPath" label="组件路径" min-width="150" show-overflow-tooltip />
         <el-table-column prop="permission" label="权限标识" min-width="150" show-overflow-tooltip />
         <el-table-column label="排序" width="120" align="center">
           <template #default="{ row }">
@@ -307,7 +308,7 @@ const handleAdd = (row) => {
     icon: '',
     type: 'menu',
     routePath: '',
-    componentPath: '',
+    componentPath: '/src/views/',
     permission: '',
     sort: 0,
     status: '0'

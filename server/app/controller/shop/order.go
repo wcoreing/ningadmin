@@ -6,6 +6,8 @@ import (
 	"wnadmin/app/service/shop"
 	"wnadmin/app/service/shop/logistics"
 
+	"strconv"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -78,4 +80,23 @@ func (c *OrderController) GetLogisticsTrack(ctx *gin.Context) {
 	}
 
 	response.OkWithData(result, ctx)
+}
+
+// ConfirmReceive 确认收货
+func (c *OrderController) ConfirmReceive(ctx *gin.Context) {
+	id := ctx.Param("id")
+	orderID, err := strconv.ParseUint(id, 10, 64)
+	if err != nil {
+		response.FailWithMessage(400, "无效的订单ID", ctx)
+		return
+	}
+
+	// 调用订单服务完成订单
+	err = c.orderService.CompleteOrder(uint(orderID))
+	if err != nil {
+		response.FailWithMessage(400, "确认收货失败", ctx)
+		return
+	}
+
+	response.Ok(ctx)
 }
