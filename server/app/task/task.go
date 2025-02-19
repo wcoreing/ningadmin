@@ -1,6 +1,8 @@
 package task
 
 import (
+	"fmt"
+
 	"github.com/robfig/cron"
 )
 
@@ -15,4 +17,9 @@ func InitTask() {
 
 	// 每小时执行一次收益处理状态检查
 	cronTab.AddFunc("0 * * * *", CheckIncomeProcess)
+
+	// 每小时执行一次订单自动收货任务
+	cronTab.AddFunc("* * * * *", func() {
+		fmt.Println("每分钟执行一次任务")
+	})
 }
