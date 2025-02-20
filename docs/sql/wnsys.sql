@@ -11,7 +11,7 @@
  Target Server Version : 80012 (8.0.12)
  File Encoding         : 65001
 
- Date: 19/02/2025 08:36:57
+ Date: 20/02/2025 14:35:38
 */
 
 SET NAMES utf8mb4;
@@ -55,7 +55,7 @@ CREATE TABLE `distribution_balance_log`  (
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_user_id`(`user_id` ASC) USING BTREE,
   INDEX `idx_create_time`(`create_time` ASC) USING BTREE
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '分销资金变动记录表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '分销资金变动记录表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Table structure for distribution_income
@@ -69,7 +69,7 @@ CREATE TABLE `distribution_income`  (
   `commission_rate` decimal(5, 2) NOT NULL COMMENT '佣金比例',
   `commission_amount` decimal(10, 2) NOT NULL COMMENT '佣金金额',
   `level` tinyint(1) NOT NULL COMMENT '返佣等级(1-一级 2-二级)',
-  `status` tinyint(1) NOT NULL DEFAULT '0' COMMENT '状态(0-冻结中 1-已解冻 2-已失效 3-已入账)',
+  `status` tinyint(1) NOT NULL DEFAULT 0 COMMENT '状态(0-冻结中 1-已解冻 2-已失效)',
   `unfreeze_time` datetime NULL DEFAULT NULL COMMENT '解冻时间',
   `process_time` datetime NULL DEFAULT NULL COMMENT '处理时间',
   `process_remark` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '处理备注',
@@ -245,7 +245,7 @@ CREATE TABLE `form_share`  (
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE INDEX `uk_share_code`(`share_code` ASC) USING BTREE,
   INDEX `idx_template_id`(`template_id` ASC) USING BTREE
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '表单分享记录' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '表单分享记录' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Table structure for form_template
@@ -668,7 +668,7 @@ CREATE TABLE `shop_order_log`  (
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_order_id`(`order_id` ASC) USING BTREE,
   INDEX `idx_order_no`(`order_no` ASC) USING BTREE
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '订单日志表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '订单日志表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Table structure for shop_order_payment
@@ -854,7 +854,7 @@ CREATE TABLE `sys_file`  (
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_category_id`(`category_id` ASC) USING BTREE,
   INDEX `idx_md5`(`md5` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 121 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '文件信息表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 122 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '文件信息表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Table structure for sys_file_category
@@ -895,7 +895,7 @@ CREATE TABLE `sys_permission`  (
   `update_time` datetime NULL DEFAULT NULL COMMENT '更新时间',
   `update_by` varchar(64) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT '更新者',
   PRIMARY KEY (`permission_id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 30 CHARACTER SET = utf8 COLLATE = utf8_general_ci COMMENT = '权限信息表' ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 31 CHARACTER SET = utf8 COLLATE = utf8_general_ci COMMENT = '权限信息表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Table structure for sys_role
@@ -927,7 +927,7 @@ CREATE TABLE `sys_role_permission`  (
   INDEX `fk_role_permission_permission`(`permission_id` ASC) USING BTREE,
   CONSTRAINT `fk_role_permission_permission` FOREIGN KEY (`permission_id`) REFERENCES `sys_permission` (`permission_id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
   CONSTRAINT `fk_role_permission_role` FOREIGN KEY (`role_id`) REFERENCES `sys_role` (`role_id`) ON DELETE RESTRICT ON UPDATE RESTRICT
-) ENGINE = InnoDB AUTO_INCREMENT = 459 CHARACTER SET = utf8 COLLATE = utf8_general_ci COMMENT = '角色权限关联表' ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 485 CHARACTER SET = utf8 COLLATE = utf8_general_ci COMMENT = '角色权限关联表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Table structure for sys_user

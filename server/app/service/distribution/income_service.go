@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"time"
 	"wnadmin/app/model/do/distribution"
+	"wnadmin/app/model/dto"
+	distributionvo "wnadmin/app/model/vo/distribution"
+
 	"wnadmin/app/provider/db"
 
 	"gorm.io/gorm"
@@ -81,6 +84,13 @@ func (s *IncomeService) AddIncome(income *distribution.DistributionIncome) error
 		}
 
 		return nil
+	})
+}
+
+// Unfreeze 解冻分销收益
+func (s *IncomeService) Unfreeze(req *dto.DistributionIncomeUnfreezeReq) error {
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		return s.UnfreezeIncome(uint(req.Id))
 	})
 }
 
@@ -176,4 +186,81 @@ func (s *IncomeService) CheckIncomeProcess() error {
 	}
 
 	return nil
+}
+
+// GetPage 分页获取分销收益列表
+func (s *IncomeService) GetIncomList(req *dto.DistributionIncomeListReq) (list []distributionvo.IncomeVO, total int64, err error) {
+	var incomes []distribution.DistributionIncome
+	db := s.db.Model(&distribution.DistributionIncome{})
+
+	// 关联用户表和订单表
+	db = db.Select(`
+		distribution_income.*,
+		shop_user.nickname as user_name,
+		shop_order.order_no as order_no
+	`).
+		Joins("LEFT JOIN shop_user ON shop_user.id = distribution_income.user_id").
+		Joins("LEFT JOIN shop_order ON shop_order.id = distribution_income.order_id")
+
+	// 构建查询条件
+	if req.UserId != "" {
+		db = db.Where("distribution_income.user_id = ?", req.UserId)
+	}
+	if req.Nickname != "" {
+		db = db.Where("shop_user.nickname LIKE ?", "%"+req.Nickname+"%")
+	}
+	if req.Status != "" {
+		db = db.Where("distribution_income.status = ?", req.Status)
+	}
+	if req.StartTime != "" {
+		db = db.Where("distribution_income.create_time >= ?", req.StartTime)
+	}
+	if req.EndTime != "" {
+		db = db.Where("distribution_income.create_time <= ?", req.EndTime)
+	}
+
+	// 获取总数
+	err = db.Count(&total).Error
+	if err != nil {
+		return
+	}
+
+	// 获取分页数据
+	err = db.Offset((req.PageNum - 1) * req.PageSize).
+		Limit(req.PageSize).
+		Order("distribution_income.id DESC").
+		Find(&incomes).Error
+	// 转换为 VO
+	for _, income := range incomes {
+		vo := distributionvo.IncomeVO{
+			Id:               income.ID,
+			UserId:           income.UserID,
+			UserName:         income.UserName,
+			OrderId:          income.OrderID,
+			OrderNo:          income.OrderNo,
+			OrderAmount:      income.OrderAmount,
+			CommissionRate:   income.CommissionRate,
+			CommissionAmount: income.CommissionAmount,
+			Level:            income.Level,
+			Status:           income.Status,
+			UnfreezeTime:     income.UnfreezeTime,
+			CreateTime:       income.CreateTime.Format("2006-01-02 15:04:05"),
+		}
+
+		// 处理状态显示
+		switch income.Status {
+		case 0:
+			vo.StatusText = "冻结中"
+		case 1:
+			vo.StatusText = "已解冻"
+		case 2:
+			vo.StatusText = "已失效"
+		case 3:
+			vo.StatusText = "已入账"
+		}
+
+		list = append(list, vo)
+	}
+
+	return
 }

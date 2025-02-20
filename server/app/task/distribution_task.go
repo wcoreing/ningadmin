@@ -1,6 +1,7 @@
 package task
 
 import (
+	"fmt"
 	"time"
 	"wnadmin/app/model/do/distribution"
 	"wnadmin/app/provider/db"
@@ -9,6 +10,7 @@ import (
 
 // UnfreezeIncome 解冻收益任务
 func UnfreezeIncome() {
+	fmt.Println("解冻收益任务")
 	incomeService := distributionService.NewIncomeService()
 
 	var incomes []distribution.DistributionIncome

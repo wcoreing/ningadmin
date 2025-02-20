@@ -32,5 +32,14 @@ func RegisterDistributionRoutes(r *gin.RouterGroup) {
 		distributionGroup.POST("/withdraw/approve/:id", withdrawController.Approve)
 		distributionGroup.POST("/withdraw/reject", withdrawController.Reject)
 		distributionGroup.POST("/withdraw/pay", withdrawController.Pay)
+		// 分销收益相关路由
+
+		incomeController := distribution.NewIncomeController()
+		incomeRouter := distributionGroup.Group("/income")
+		{
+			incomeRouter.GET("/list", incomeController.GetIncomList)  // 分页查询
+			incomeRouter.POST("/unfreeze", incomeController.Unfreeze) // 解冻收益
+		}
+
 	}
 }

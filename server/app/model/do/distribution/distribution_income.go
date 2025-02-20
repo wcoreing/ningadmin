@@ -6,7 +6,9 @@ import "time"
 type DistributionIncome struct {
 	ID               uint      `gorm:"primaryKey" json:"id"`
 	UserID           uint      `json:"user_id"`
+	UserName         string    `gorm:"column:user_name" json:"user_name"` // 用户名称(关联字段)
 	OrderID          uint      `json:"order_id"`
+	OrderNo          string    `gorm:"column:order_no" json:"order_no"` // 订单号(关联字段)
 	OrderAmount      float64   `json:"order_amount"`
 	CommissionRate   float64   `json:"commission_rate"`
 	CommissionAmount float64   `json:"commission_amount"`

@@ -96,7 +96,7 @@
         </el-form>
 
         <div class="form-footer">
-          <p class="copyright">Copyright © 2024 WN System</p>
+          <p class="copyright">Copyright © 2025 WN System</p>
         </div>
       </div>
     </div>

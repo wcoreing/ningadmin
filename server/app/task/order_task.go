@@ -1,6 +1,7 @@
 package task
 
 import (
+	"fmt"
 	"time"
 	"wnadmin/app/model/do/shop"
 	"wnadmin/app/provider/db"
@@ -9,6 +10,7 @@ import (
 
 // AutoCompleteOrder 自动完成订单任务
 func AutoCompleteOrder() {
+	fmt.Println("自动完成订单任务")
 	orderService := &service.OrderService{}
 
 	// 查找已发货超过N天的订单
