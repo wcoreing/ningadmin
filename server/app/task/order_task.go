@@ -18,7 +18,7 @@ func AutoCompleteOrder() {
 	autoReceiveDays := 7 // 可以从配置中读取
 	deadline := time.Now().AddDate(0, 0, -autoReceiveDays)
 
-	err := db.DB.WnAdmin.Where("status = ? AND ship_time <= ?", "shipped", deadline).Find(&orders).Error
+	err := db.WnAdmin().Where("status = ? AND ship_time <= ?", "delivered", deadline).Find(&orders).Error
 	if err != nil {
 		return
 	}

@@ -56,7 +56,7 @@
                     <el-checkbox
                       v-for="option in element.props.options"
                       :key="option.value"
-                      :label="option.value"
+                      :value="option.value"
                     >
                       {{ option.label }}
                     </el-checkbox>

@@ -6,7 +6,9 @@ import "time"
 type IncomeVO struct {
 	Id               uint      `json:"id"`
 	UserId           uint      `json:"userId"`
-	UserName         string    `json:"userName"` // 用户名称
+	UserName         string    `json:"userName"`    // 推荐官名称
+	InviteeId        *uint     `json:"inviteeId"`   // 被邀请人ID
+	InviteeName      string    `json:"inviteeName"` // 被邀请人名称(从user表读取)
 	OrderId          uint      `json:"orderId"`
 	OrderAmount      float64   `json:"orderAmount"`    // 订单金额
 	CommissionRate   float64   `json:"commissionRate"` // 佣金比例

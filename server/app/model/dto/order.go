@@ -4,12 +4,13 @@ import "time"
 
 // OrderListReq 订单列表请求参数
 type OrderListReq struct {
-	OrderNo   string    `form:"orderNo"`   // 订单编号
-	Status    string    `form:"status"`    // 订单状态
-	StartTime time.Time `form:"startTime"` // 开始时间
-	EndTime   time.Time `form:"endTime"`   // 结束时间
-	PageNum   int       `form:"pageNum"`   // 页码
-	PageSize  int       `form:"pageSize"`  // 每页数量
+	OrderNo    string    `form:"orderNo"`    // 订单编号
+	Status     string    `form:"status"`     // 订单状态
+	DiningType string    `form:"diningType"` // 用餐类型
+	StartTime  time.Time `form:"startTime"`  // 开始时间
+	EndTime    time.Time `form:"endTime"`    // 结束时间
+	PageNum    int       `form:"pageNum"`    // 页码
+	PageSize   int       `form:"pageSize"`   // 每页数量
 }
 
 // OrderListResp 订单列表响应
@@ -19,6 +20,9 @@ type OrderListResp struct {
 	TotalAmount float64         `json:"totalAmount"` // 订单总金额
 	PayAmount   float64         `json:"payAmount"`   // 实付金额
 	Status      string          `json:"status"`      // 订单状态
+	DiningType  string          `json:"diningType"`  // 用餐类型
+	TableId     *int64          `json:"tableId"`     // 餐桌ID
+	TableNo     string          `json:"tableNo"`     // 餐桌编号
 	PayType     int             `json:"payType"`     // 支付方式
 	PayTime     string          `json:"payTime"`     // 支付时间
 	CreateTime  string          `json:"createTime"`  // 创建时间

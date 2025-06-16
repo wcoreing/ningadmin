@@ -21,7 +21,7 @@ func NewLogisticsService(providerType logistics.ProviderType) *LogisticsService 
 func (s *LogisticsService) GetLogisticsTrack(req *dto.LogisticsTrackReq) (*dto.LogisticsTrackResp, error) {
 	// 1. 查询订单信息
 	order := &shop.ShopOrder{}
-	if err := db.DB.WnAdmin.Preload("Receiver").Where("id = ?", req.OrderId).First(order).Error; err != nil {
+	if err := db.WnAdmin().Preload("Receiver").Where("id = ?", req.OrderId).First(order).Error; err != nil {
 		return nil, err
 	}
 

@@ -23,7 +23,7 @@ func NewConfigController() *ConfigController {
 
 // List 获取配置列表
 // @Summary 获取配置列表
-// @Description 获取配置列表，支持分页和条件查询
+// @Description 获取配置列表，支持分页和条件查询，当pageNum=0且pageSize=0时返回树形结构
 // @Tags 系统配置
 // @Accept application/x-www-form-urlencoded
 // @Produce json
@@ -40,12 +40,17 @@ func (c *ConfigController) List(ctx *gin.Context) {
 		return
 	}
 
-	// 设置默认值
-	if query.PageNum <= 0 {
-		query.PageNum = 1
-	}
-	if query.PageSize <= 0 {
-		query.PageSize = 10
+	// 当pageNum=0且pageSize=0时，返回树形结构，不设置默认值
+	if query.PageNum == 0 && query.PageSize == 0 {
+		// 返回树形结构
+	} else {
+		// 设置分页默认值
+		if query.PageNum <= 0 {
+			query.PageNum = 1
+		}
+		if query.PageSize <= 0 {
+			query.PageSize = 10
+		}
 	}
 
 	list, total, err := c.configService.GetConfigList(&query)
@@ -161,4 +166,35 @@ func (c *ConfigController) GetInfo(ctx *gin.Context) {
 	}
 
 	response.OkWithDetailed(config, "获取成功", ctx)
+}
+
+// GetTree 获取配置树
+// @Summary 获取配置树
+// @Description 获取配置树形结构
+// @Tags 系统配置
+// @Accept application/x-www-form-urlencoded
+// @Produce json
+// @Success 200 {object} response.Response "成功"
+// @Router /system/config/tree [get]
+func (c *ConfigController) GetTree(ctx *gin.Context) {
+	query := dto.ConfigQuery{
+		PageNum:  0,
+		PageSize: 0,
+	}
+
+	// 绑定查询参数
+	if err := ctx.ShouldBindQuery(&query); err != nil {
+		response.FailWithMessage(201, "参数错误: "+err.Error(), ctx)
+		return
+	}
+
+	list, _, err := c.configService.GetConfigList(&query)
+	if err != nil {
+		response.FailWithMessage(201, "获取配置树失败: "+err.Error(), ctx)
+		return
+	}
+
+	response.OkWithDetailed(gin.H{
+		"list": list,
+	}, "获取成功", ctx)
 }

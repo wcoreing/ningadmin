@@ -24,7 +24,7 @@ func (s *ShopGoodsTag) TableName() string {
 
 // Query 获取查询构建器
 func (s *ShopGoodsTag) Query() *gorm.DB {
-	query := db.DB.WnAdmin.Model(s).Where("is_delete = ?", 0)
+	query := db.WnAdmin().Model(s).Where("is_delete = ?", 0)
 
 	// 标签名称
 	if s.Name != "" {

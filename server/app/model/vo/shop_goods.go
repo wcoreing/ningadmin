@@ -16,7 +16,6 @@ type GoodsVO struct {
 	Price         float64 `json:"price"`
 	OriginalPrice float64 `json:"originalPrice"`
 	Stock         int     `json:"stock"`
-	Sales         int     `json:"sales"`
 	Status        int8    `json:"status"`
 	Sort          int     `json:"sort"`
 }

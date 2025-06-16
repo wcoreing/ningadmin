@@ -95,12 +95,15 @@ func (c *BannerController) CreateBanner(ctx *gin.Context) {
 func (c *BannerController) UpdateBanner(ctx *gin.Context) {
 	var req dto.BannerUpdateReq
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		response.FailWithMessage(400, err.Error(), ctx)
+		fmt.Printf("Banner更新参数绑定失败: %v\n", err)
+		response.FailWithMessage(400, "参数错误: "+err.Error(), ctx)
 		return
 	}
 
+	fmt.Printf("Banner更新请求参数: %+v\n", req)
 	err := c.bannerService.UpdateBanner(&req)
 	if err != nil {
+		fmt.Printf("Banner更新失败: %v\n", err)
 		response.FailWithMessage(500, err.Error(), ctx)
 		return
 	}

@@ -1,90 +1,150 @@
 <template>
-  <div class="config-manage">
-    <el-card>
-      <template #header>
-        <div class="card-header">
-          <div class="header-left">
-            <el-input
-              v-model="searchForm.keyword"
-              placeholder="搜索配置名称/键"
-              style="width: 200px"
-              clearable
-              @keyup.enter="handleSearch"
-            >
-              <template #prefix>
-                <el-icon><Search /></el-icon>
-              </template>
-            </el-input>
-            <el-select
-              v-model="searchForm.moduleKey"
-              placeholder="选择模块"
-              clearable
-              style="width: 120px; margin-left: 16px"
-            >
-              <el-option
-                v-for="item in moduleList"
-                :key="item.moduleKey"
-                :label="item.moduleName"
-                :value="item.moduleKey"
-              />
-            </el-select>
-            <el-button type="primary" @click="handleSearch" style="margin-left: 16px">
-              搜索
-            </el-button>
-            <el-button @click="resetSearch">重置</el-button>
-          </div>
-          <div class="header-right">
-            <el-button type="primary" @click="handleAdd">
-              <el-icon><Plus /></el-icon>
-              新增配置
-            </el-button>
-          </div>
-        </div>
-      </template>
-
-      <el-table
-        v-loading="loading"
-        :data="configList"
-        style="width: 100%"
+  <div class="app-container">
+    <!-- 页面标题 -->
+    <div class="page-header">
+      <h2>配置管理</h2>
+    </div>
+    
+    <!-- 搜索工具栏 -->
+    <div class="filter-container">
+      <el-input
+        v-model="searchForm.keyword"
+        placeholder="搜索配置名称/键"
+        style="width: 200px"
+        class="filter-item"
+        @keyup.enter="handleSearch"
       >
-        <el-table-column prop="configName" label="配置名称" min-width="150" />
-        <el-table-column prop="configKey" label="配置键" min-width="150" show-overflow-tooltip />
-        <el-table-column prop="configValue" label="配置值" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="moduleName" label="所属模块" width="120">
-          <template #default="{ row }">
-            <el-tag>{{ row.moduleName }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="configType" label="配置类型" width="100">
-          <template #default="{ row }">
-            <el-tag :type="getConfigTypeTag(row.configType)">
-              {{ getConfigTypeName(row.configType) }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="150" fixed="right">
-          <template #default="{ row }">
-            <el-button type="primary" link @click="handleEdit(row)">
-              编辑
-            </el-button>
-            <el-button type="danger" link @click="handleDelete(row)">
-              删除
-            </el-button>
-          </template>
-        </el-table-column>
-      </el-table>
+        <template #prefix>
+          <el-icon><Search /></el-icon>
+        </template>
+      </el-input>
+      <el-select
+        v-model="searchForm.moduleKey"
+        placeholder="选择模块"
+        clearable
+        style="width: 120px; margin-left: 16px"
+        class="filter-item"
+      >
+        <el-option
+          v-for="item in moduleList"
+          :key="item.moduleKey"
+          :label="item.moduleName"
+          :value="item.moduleKey"
+        />
+      </el-select>
+      <el-select
+        v-model="searchForm.status"
+        placeholder="状态"
+        clearable
+        class="filter-item"
+        style="width: 130px; margin-left: 16px"
+      >
+        <el-option label="启用" :value="1" />
+        <el-option label="禁用" :value="0" />
+      </el-select>
+      <el-button
+        class="filter-item"
+        type="primary"
+        :icon="Search"
+        @click="handleSearch"
+        style="margin-left: 16px"
+      >
+        搜索
+      </el-button>
+      <el-button @click="resetSearch">重置</el-button>
+      <el-button
+        class="filter-item"
+        type="primary"
+        :icon="Plus"
+        @click="handleAdd"
+        style="margin-left: 16px"
+      >
+        新增配置
+      </el-button>
+    </div>
 
-      <el-pagination
-        v-model:current-page="searchForm.pageNum"
-        v-model:page-size="searchForm.pageSize"
-        :total="total"
-        :page-sizes="[10, 20, 50, 100]"
-        layout="total, sizes, prev, pager, next"
-        class="pagination"
-        @size-change="handleSizeChange"
-        @current-change="handleCurrentChange"
-      />
-    </el-card>
+    <!-- 配置表格 -->
+    <el-table
+      v-loading="loading"
+      :data="configList"
+      row-key="id"
+      border
+      default-expand-all
+      :tree-props="{ children: 'children', hasChildren: 'hasChildren' }"
+    >
+      <template #empty>
+        <span>暂无数据</span>
+      </template>
+      <el-table-column prop="configName" label="配置名称" min-width="200" />
+      <el-table-column prop="configKey" label="配置键" min-width="250" show-overflow-tooltip />
+      <el-table-column prop="configValue" label="配置值" min-width="150" show-overflow-tooltip>
+        <template #default="{ row }">
+          <div v-if="row.configType === 'image' && row.configValue">
+            <el-image 
+              :src="getImageUrl(row.configValue)" 
+              fit="cover" 
+              style="width: 40px; height: 40px; border-radius: 4px; cursor: pointer;"
+              :preview-src-list="[getImageUrl(row.configValue)]"
+              preview-teleported
+            />
+          </div>
+          <span v-else>{{ row.configValue || '-' }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column prop="moduleName" label="所属模块" width="120">
+        <template #default="{ row }">
+          <el-tag>{{ row.moduleName }}</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column prop="configType" label="配置类型" width="100">
+        <template #default="{ row }">
+          <el-tag :type="getConfigTypeTag(row.configType)">
+            {{ getConfigTypeName(row.configType) }}
+          </el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column prop="sort" label="排序" width="80" align="center" />
+      <el-table-column prop="status" label="状态" width="100" align="center">
+        <template #default="{ row }">
+          <el-tag :type="row.status === 1 ? 'success' : 'info'">
+            {{ row.status === 1 ? '启用' : '禁用' }}
+          </el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column
+        label="操作"
+        align="center"
+        width="280"
+        class-name="small-padding fixed-width"
+      >
+        <template #default="{ row }">
+          <el-button
+            link
+            type="primary"
+            :icon="Plus"
+            @click="handleAdd(row)"
+          >
+            添加子配置
+          </el-button>
+          <el-button
+            link
+            type="primary"
+            :icon="Edit"
+            @click="handleEdit(row)"
+          >
+            编辑
+          </el-button>
+          <el-button
+            link
+            type="danger"
+            :icon="Delete"
+            @click="handleDelete(row)"
+          >
+            删除
+          </el-button>
+        </template>
+      </el-table-column>
+    </el-table>
 
     <!-- 配置表单弹窗 -->
     <el-dialog
@@ -98,6 +158,17 @@
         :rules="configRules"
         label-width="100px"
       >
+        <el-form-item label="上级配置">
+          <el-tree-select
+            v-model="configForm.parentId"
+            :data="configOptions"
+            :props="{ label: 'configName', value: 'id' }"
+            value-key="id"
+            placeholder="选择上级配置"
+            check-strictly
+            clearable
+          />
+        </el-form-item>
         <el-form-item label="所属模块" prop="moduleKey">
           <el-select v-model="configForm.moduleKey" style="width: 100%">
             <el-option
@@ -114,20 +185,77 @@
         <el-form-item label="配置键" prop="configKey">
           <el-input 
             v-model="configForm.configKey" 
-            placeholder="请输入配置键"
+            placeholder="可选，用于程序中获取配置值"
             :disabled="dialogType === 'edit'"
           />
+          <div class="form-tip">
+            <el-text size="small" type="info">
+              配置键为可选项，用于程序中获取配置值，如不填写则仅作为分组使用
+            </el-text>
+          </div>
         </el-form-item>
         <el-form-item label="配置类型" prop="configType">
-          <el-select v-model="configForm.configType" style="width: 100%">
+          <el-select v-model="configForm.configType" style="width: 100%" placeholder="可选，默认为字符串">
             <el-option label="字符串" value="string" />
             <el-option label="数字" value="number" />
             <el-option label="布尔值" value="boolean" />
             <el-option label="日期" value="date" />
+            <el-option label="图片" value="image" />
           </el-select>
         </el-form-item>
         <el-form-item label="配置值" prop="configValue">
-          <component :is="getConfigValueComponent" v-model="configForm.configValue" />
+          <!-- 图片上传组件 -->
+          <div v-if="configForm.configType === 'image'" class="image-upload-container">
+            <div v-if="configForm.configValue" class="image-preview">
+              <el-image 
+                :src="getImageUrl(configForm.configValue)" 
+                fit="cover" 
+                style="width: 100px; height: 100px; border-radius: 6px;"
+              />
+              <div class="image-actions">
+                <el-button 
+                  type="primary" 
+                  size="small" 
+                  @click="openFileManager"
+                  style="margin-right: 8px;"
+                >
+                  更换图片
+                </el-button>
+                <el-button 
+                  type="danger" 
+                  size="small" 
+                  @click="removeImage"
+                >
+                  删除图片
+                </el-button>
+              </div>
+            </div>
+            <div v-else class="upload-placeholder" @click="openFileManager">
+              <el-icon size="40" color="#c0c4cc"><Plus /></el-icon>
+              <div style="margin-top: 8px; color: #c0c4cc;">点击上传图片</div>
+            </div>
+          </div>
+          <!-- 其他类型的输入组件 -->
+          <component 
+            v-else
+            :is="getConfigValueComponent" 
+            v-model="configForm.configValue" 
+            placeholder="可选，具体的配置内容" 
+          />
+          <div class="form-tip">
+            <el-text size="small" type="info">
+              配置值为可选项，如不填写则仅作为分组使用
+            </el-text>
+          </div>
+        </el-form-item>
+        <el-form-item label="排序" prop="sort">
+          <el-input-number v-model="configForm.sort" :min="0" :max="999" />
+        </el-form-item>
+        <el-form-item label="状态">
+          <el-radio-group v-model="configForm.status">
+            <el-radio :value="1">启用</el-radio>
+            <el-radio :value="0">禁用</el-radio>
+          </el-radio-group>
         </el-form-item>
         <el-form-item label="备注" prop="remark">
           <el-input
@@ -142,21 +270,28 @@
         <el-button type="primary" @click="handleSubmit">确定</el-button>
       </template>
     </el-dialog>
+
+    <!-- 文件管理器 -->
+    <file-manager
+      v-model="fileManagerVisible"
+      :multiple="false"
+      @select="handleImageSelect"
+    />
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Search, Plus } from '@element-plus/icons-vue'
+import { Search, Plus, Edit, Delete } from '@element-plus/icons-vue'
 import modules from '@/config/modules'
+import FileManager from '@/components/FileManager/index.vue'
 import { 
   getConfigList as getConfigListApi,
   addConfig,
   updateConfig,
   deleteConfig,
-  getConfigInfo,
-  checkConfigKey
+  getConfigInfo
 } from '@/api/system/config'
 import { 
   getConfigTypeTag,
@@ -169,15 +304,14 @@ import {
 // 列表数据
 const loading = ref(false)
 const configList = ref([])
-const total = ref(0)
+const configOptions = ref([])
 const moduleList = modules
 
-// 分页
+// 搜索表单
 const searchForm = reactive({
   keyword: '',
   moduleKey: '',
-  pageNum: 1,
-  pageSize: 10
+  status: undefined
 })
 
 // 配置表单
@@ -186,11 +320,14 @@ const dialogType = ref('add')
 const configFormRef = ref()
 const configForm = reactive({
   id: undefined,
+  parentId: 0,
   moduleKey: '',
   configName: '',
   configKey: '',
   configType: 'string',
   configValue: '',
+  sort: 0,
+  status: 1,
   remark: ''
 })
 
@@ -204,17 +341,24 @@ const configRules = {
     { min: 2, max: 50, message: '长度在 2 到 50 个字符', trigger: 'blur' }
   ],
   configKey: [
-    { required: true, message: '请输入配置键', trigger: 'blur' },
-    { min: 2, max: 50, message: '长度在 2 到 50 个字符', trigger: 'blur' },
-  ],
-  configType: [
-    { required: true, message: '请选择配置类型', trigger: 'change' }
+    { 
+      min: 2, 
+      max: 50, 
+      message: '长度在 2 到 50 个字符', 
+      trigger: 'blur',
+      validator: (rule, value, callback) => {
+        if (value && value.length > 0 && value.length < 2) {
+          callback(new Error('配置键长度在 2 到 50 个字符'))
+        } else {
+          callback()
+        }
+      }
+    }
   ],
   configValue: [
-    { required: true, message: '请输入配置值', trigger: 'blur' },
     { 
       validator: (rule, value, callback) => {
-        if (!validateConfigValue(value, configForm.configType)) {
+        if (value && configForm.configType && !validateConfigValue(value, configForm.configType)) {
           callback(new Error('配置值格式不正确'))
         } else {
           callback()
@@ -225,6 +369,9 @@ const configRules = {
   ]
 }
 
+// 文件管理器
+const fileManagerVisible = ref(false)
+
 // 根据配置类型获取对应的输入组件
 const getConfigValueComponent = computed(() => {
   switch (configForm.configType) {
@@ -234,22 +381,76 @@ const getConfigValueComponent = computed(() => {
       return 'el-date-picker'
     case 'number':
       return 'el-input-number'
+    case 'image':
+      return null // 图片类型使用自定义组件
     default:
       return 'el-input'
   }
 })
 
+// 获取图片URL
+const getImageUrl = (url) => {
+  if (!url) return ''
+  if (url.startsWith('http')) return url
+  // 如果是相对路径，拼接基础URL
+  const baseUrl = import.meta.env.VITE_IMG_URL || import.meta.env.VITE_API_BASE_URL || window.location.origin
+  return baseUrl + url
+}
+
+// 打开文件管理器
+const openFileManager = () => {
+  fileManagerVisible.value = true
+}
+
+// 处理图片选择
+const handleImageSelect = (file) => {
+  if (file && file.url) {
+    configForm.configValue = file.url
+    fileManagerVisible.value = false
+  }
+}
+
+// 删除图片
+const removeImage = () => {
+  configForm.configValue = ''
+}
+
 // 获取配置列表
 const getConfigList = async () => {
   loading.value = true
   try {
-    const res = await getConfigListApi(searchForm)
-    console.log(res)
-    configList.value = res.list
-    total.value = res.total
+    // 获取树形结构数据
+    const res = await getConfigListApi({
+      ...searchForm,
+      pageNum: 0,
+      pageSize: 0
+    })
+    console.log('配置列表响应:', res)
+    
+    // 确保数据是数组
+    if (Array.isArray(res.list)) {
+      configList.value = res.list
+      configOptions.value = [{ 
+        id: 0, 
+        configName: '顶级配置', 
+        children: res.list
+      }]
+    } else {
+      configList.value = []
+      configOptions.value = [{ 
+        id: 0, 
+        configName: '顶级配置', 
+        children: []
+      }]
+    }
   } catch (error) {
     console.error('获取配置列表失败:', error)
-    ElMessage.error('获取配置列表失败')
+    configList.value = []
+    configOptions.value = [{ 
+      id: 0, 
+      configName: '顶级配置', 
+      children: []
+    }]
   } finally {
     loading.value = false
   }
@@ -257,7 +458,6 @@ const getConfigList = async () => {
 
 // 搜索
 const handleSearch = () => {
-  searchForm.pageNum = 1
   getConfigList()
 }
 
@@ -265,21 +465,32 @@ const handleSearch = () => {
 const resetSearch = () => {
   searchForm.keyword = ''
   searchForm.moduleKey = ''
-  searchForm.pageNum = 1
+  searchForm.status = undefined
   handleSearch()
 }
 
+// 重置表单
+const resetForm = () => {
+  configForm.id = undefined
+  configForm.parentId = 0
+  configForm.moduleKey = ''
+  configForm.configName = ''
+  configForm.configKey = ''
+  configForm.configType = 'string'
+  configForm.configValue = ''
+  configForm.sort = 0
+  configForm.status = 1
+  configForm.remark = ''
+  configFormRef.value?.resetFields()
+}
+
 // 新增配置
-const handleAdd = () => {
+const handleAdd = (row) => {
   dialogType.value = 'add'
-  Object.assign(configForm, {
-    moduleKey: '',
-    configName: '',
-    configKey: '',
-    configType: 'string',
-    configValue: '',
-    remark: ''
-  })
+  resetForm()
+  if (row) {
+    configForm.parentId = row.id
+  }
   dialogVisible.value = true
 }
 
@@ -336,24 +547,30 @@ const handleSubmit = async () => {
 
         if (dialogType.value === 'add') {
           const addData = {
+            parentId: configForm.parentId,
             configName: configForm.configName,
             configKey: configForm.configKey,
             configValue: configValue,
             configType: configForm.configType,
             moduleKey: configForm.moduleKey,
             moduleName: moduleName,
+            sort: configForm.sort,
+            status: configForm.status,
             remark: configForm.remark
           }
-          const addRes = await addConfig(addData)
+          await addConfig(addData)
         } else {
           const updateData = {
             id: configForm.id,
+            parentId: configForm.parentId,
             configName: configForm.configName,
             configKey: configForm.configKey,
             configValue: configValue,
             configType: configForm.configType,
             moduleKey: configForm.moduleKey,
             moduleName: moduleName,
+            sort: configForm.sort,
+            status: configForm.status,
             remark: configForm.remark
           }
           await updateConfig(updateData)
@@ -370,17 +587,7 @@ const handleSubmit = async () => {
   })
 }
 
-// 分页相关方法
-const handleSizeChange = (val) => {
-  searchForm.pageSize = val
-  searchForm.pageNum = 1
-  getConfigList()
-}
 
-const handleCurrentChange = (val) => {
-  searchForm.pageNum = val
-  getConfigList()
-}
 
 onMounted(() => {
   getConfigList()
@@ -388,24 +595,57 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.config-manage {
-  padding: 20px;
+.page-header {
+  margin-bottom: 20px;
 }
 
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.page-header h2 {
+  margin: 0;
+  color: #303133;
+  font-size: 20px;
+  font-weight: 500;
 }
 
-.header-left {
-  display: flex;
-  align-items: center;
+.filter-container {
+  padding-bottom: 10px;
 }
 
-.pagination {
-  margin-top: 20px;
-  display: flex;
-  justify-content: flex-end;
+.filter-item {
+  margin-right: 10px;
+}
+
+.form-tip {
+  margin-top: 4px;
+}
+
+.image-upload-container {
+  .image-preview {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  
+  .image-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .upload-placeholder {
+    width: 100px;
+    height: 100px;
+    border: 2px dashed #d9d9d9;
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: border-color 0.3s;
+    
+    &:hover {
+      border-color: #409eff;
+    }
+  }
 }
 </style> 

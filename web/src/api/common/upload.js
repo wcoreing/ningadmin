@@ -1,15 +1,9 @@
 import request from '@/utils/request'
 
-// 服务器域名配置
-const SERVER_URL = 'http://localhost:8080'  // 根据实际环境配置
-
-// 处理文件 URL，添加服务器域名
+// 处理文件 URL - 后端已经返回完整URL，无需额外处理
 function processFileUrl(file) {
   if (!file) return file
-  return {
-    ...file,
-    url: file.url.startsWith('http') ? file.url : `${SERVER_URL}${file.url}`
-  }
+  return file
 }
 
 // 获取文件列表

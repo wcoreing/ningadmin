@@ -60,7 +60,7 @@ func (s *MenuService) CreateMenu(req *dto.MenuDTO) error {
 func (s *MenuService) UpdateMenu(req *dto.MenuDTO) error {
 	// 如果只传入了 ID 和 Sort，则只更新排序
 	if len(req.Type) == 0 && len(req.Name) == 0 && len(req.Permission) == 0 {
-		return db.DB.WnAdmin.Model(&SystemDB.MenuDO{}).
+		return db.WnAdmin().Model(&SystemDB.MenuDO{}).
 			Where("id = ?", req.ID).
 			Update("sort", req.Sort).Error
 	}
@@ -90,7 +90,7 @@ func (s *MenuService) UpdateMenu(req *dto.MenuDTO) error {
 		}
 	}
 
-	return db.DB.WnAdmin.Model(&SystemDB.MenuDO{}).
+	return db.WnAdmin().Model(&SystemDB.MenuDO{}).
 		Where("permission_id = ?", req.ID).
 		Updates(updateFields).Error
 }
@@ -217,7 +217,7 @@ func contains(slice []int64, val int64) bool {
 func (s *MenuService) GetRoleMenuTree(roleID int64, permissionType string) ([]dto.MenuTree, error) {
 	// 获取角色的权限菜单
 	var menus []SystemDB.MenuDO
-	err := db.DB.WnAdmin.Table("sys_permission").
+	err := db.WnAdmin().Table("sys_permission").
 		Joins("LEFT JOIN sys_role_permission ON sys_permission.permission_id = sys_role_permission.permission_id").
 		Where(" sys_permission.permission_type = ? AND sys_role_permission.role_id = ? AND sys_permission.del_flag = ? AND sys_permission.status = ?",
 			permissionType, roleID, "0", "0").
@@ -254,7 +254,7 @@ func buildRoleMenuTree(menus []SystemDB.MenuDO, parentID int64) []dto.MenuTree {
 
 // UpdateSort 更新菜单排序
 func (s *MenuService) UpdateSort(id int64, sort int64) error {
-	return db.DB.WnAdmin.Model(&SystemDB.MenuDO{}).
+	return db.WnAdmin().Model(&SystemDB.MenuDO{}).
 		Where("permission_id = ?", id).
 		Update("sort", sort).Error
 }

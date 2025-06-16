@@ -26,7 +26,7 @@ func (s *ShopGoodsSpec) TableName() string {
 
 // Query 查询构造器
 func (s *ShopGoodsSpec) Query() *gorm.DB {
-	return db.DB.WnAdmin.Model(s)
+	return db.WnAdmin().Model(s)
 }
 
 // Create 创建

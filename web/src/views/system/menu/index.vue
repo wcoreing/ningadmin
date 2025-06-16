@@ -126,13 +126,14 @@
             placeholder="选择上级菜单"
             style="width: 100%"
             clearable
+            check-strictly
           />
         </el-form-item>
         <el-form-item label="菜单类型" prop="type">
           <el-radio-group v-model="menuForm.type">
-            <el-radio label="menu">菜单</el-radio>
-            <el-radio label="button">按钮</el-radio>
-            <el-radio label="page">页面</el-radio>
+            <el-radio value="menu">菜单</el-radio>
+            <el-radio value="button">按钮</el-radio>
+            <el-radio value="page">页面</el-radio>
           </el-radio-group>
         </el-form-item>
         <el-form-item label="菜单名称" prop="name">
@@ -161,8 +162,8 @@
         </el-form-item>
         <el-form-item label="菜单状态">
           <el-radio-group v-model="menuForm.status">
-            <el-radio label="0">正常</el-radio>
-            <el-radio label="1">停用</el-radio>
+            <el-radio value="0">正常</el-radio>
+            <el-radio value="1">停用</el-radio>
           </el-radio-group>
         </el-form-item>
       </el-form>

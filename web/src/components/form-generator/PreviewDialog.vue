@@ -38,7 +38,7 @@
             <el-checkbox
               v-for="option in item.props.options"
               :key="option.value"
-              :label="option.value"
+              :value="option.value"
             >
               {{ option.label }}
             </el-checkbox>

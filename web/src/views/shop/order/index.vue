@@ -8,11 +8,17 @@
         </el-form-item>
         <el-form-item label="订单状态" style="width: 200px;">
           <el-select v-model="queryParams.status" placeholder="请选择订单状态" clearable>
-            <el-option label="待付款" value="pending" />
+            <el-option label="待付款" value="unpaid" />
             <el-option label="待发货" value="unshipped" />
-            <el-option label="待收货" value="shipped" />
+            <el-option label="待收货" value="delivered" />
             <el-option label="已完成" value="completed" />
             <el-option label="已取消" value="cancelled" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="用餐类型" style="width: 200px;">
+          <el-select v-model="queryParams.diningType" placeholder="请选择用餐类型" clearable>
+            <el-option label="堂食" value="dine_in" />
+            <el-option label="外卖" value="takeout" />
           </el-select>
         </el-form-item>
         <el-form-item label="下单时间">
@@ -94,7 +100,7 @@
             <el-tag :type="getStatusType(row.status)">
               {{ getStatusText(row.status) }}
             </el-tag>
-            <div v-if="row.status === 'shipped'" class="logistics-info">
+            <div v-if="row.status === 'delivered'" class="logistics-info">
               <el-tooltip effect="dark" placement="top">
                 <template #content>
                   <div>物流公司：{{ row.receiver.logisticsCompany }}</div>
@@ -105,6 +111,13 @@
                 </el-tag>
               </el-tooltip>
             </div>
+          </template>
+        </el-table-column>
+        <el-table-column label="用餐类型" width="100" align="center">
+          <template #default="{ row }">
+            <el-tag size="small" :type="getDiningTypeColor(row.diningType)">
+              {{ getDiningTypeText(row.diningType) }}
+            </el-tag>
           </template>
         </el-table-column>
         <el-table-column label="支付方式" width="100" align="center">
@@ -129,7 +142,7 @@
           <template #default="{ row }">
             <el-button link type="primary" @click="handleDetail(row)">详情</el-button>
             <el-button 
-              v-if="['shipped', 'completed'].includes(row.status)"
+              v-if="['delivered', 'completed'].includes(row.status)"
               link 
               type="primary" 
               @click="handleViewLogistics(row)"
@@ -145,7 +158,7 @@
               发货
             </el-button>
             <el-button 
-              v-if="row.status === 'pending'" 
+              v-if="row.status === 'unpaid'" 
               link 
               type="danger" 
               @click="handleCancel(row)"
@@ -272,6 +285,7 @@ import OrderDetail from './components/OrderDetail.vue'
 const queryParams = reactive({
   orderNo: '',
   status: '',
+  diningType: '',
   dateRange: [],
   pageNum: 1,
   pageSize: 10
@@ -322,9 +336,9 @@ const logisticsInfo = ref({})
 // 获取状态类型
 const getStatusType = (status) => {
   const map = {
-    'pending': 'warning',     // 待付款
+    'unpaid': 'warning',      // 待付款
     'unshipped': 'primary',   // 待发货
-    'shipped': 'info',        // 待收货
+    'delivered': 'info',      // 待收货
     'completed': 'success',   // 已完成
     'cancelled': 'danger'     // 已取消
   }
@@ -334,9 +348,9 @@ const getStatusType = (status) => {
 // 获取状态文本
 const getStatusText = (status) => {
   const map = {
-    'pending': '待付款',
+    'unpaid': '待付款',
     'unshipped': '待发货',
-    'shipped': '待收货',
+    'delivered': '待收货',
     'completed': '已完成',
     'cancelled': '已取消'
   }
@@ -351,6 +365,24 @@ const getPayTypeText = (payType) => {
     3: '余额支付'
   }
   return map[payType] || '未支付'
+}
+
+// 获取用餐类型文本
+const getDiningTypeText = (diningType) => {
+  const map = {
+    'dine_in': '堂食',
+    'takeout': '外卖'
+  }
+  return map[diningType] || '外卖'
+}
+
+// 获取用餐类型颜色
+const getDiningTypeColor = (diningType) => {
+  const map = {
+    'dine_in': 'warning',  // 堂食用橙色
+    'takeout': 'success'   // 外卖用绿色
+  }
+  return map[diningType] || 'success'
 }
 
 // 获取物流公司名称
@@ -388,6 +420,7 @@ const handleQuery = () => {
 const resetQuery = () => {
   queryParams.orderNo = ''
   queryParams.status = ''
+  queryParams.diningType = ''
   queryParams.dateRange = []
   handleQuery()
 }

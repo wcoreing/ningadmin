@@ -6,8 +6,6 @@ import (
 	"wnadmin/app/model/do/shop"
 	"wnadmin/app/model/dto"
 	"wnadmin/app/provider/db"
-
-	"gorm.io/gorm"
 )
 
 type BannerService struct{}
@@ -41,11 +39,7 @@ func (s *BannerService) GetBannerList(req *dto.BannerListReq) (*dto.PageResult, 
 	fmt.Printf("总数: %d\n", total)
 
 	// 分页查询
-	if err := db.Preload("Goods", func(db *gorm.DB) *gorm.DB {
-		return db.
-			Joins("LEFT JOIN shop_goods_image ON shop_goods.id = shop_goods_image.goods_id AND shop_goods_image.position = 1 AND shop_goods_image.is_delete = 0").
-			Select("shop_goods.id, shop_goods.name, shop_goods.price, shop_goods_image.url as cover_img")
-	}).Order("sort desc").
+	if err := db.Order("sort desc").
 		Offset((req.PageNum - 1) * req.PageSize).
 		Limit(req.PageSize).
 		Find(&list).Error; err != nil {
@@ -68,13 +62,32 @@ func (s *BannerService) GetBannerList(req *dto.BannerListReq) (*dto.PageResult, 
 			Sort:     banner.Sort,
 			Status:   banner.Status,
 		}
-		// 如果是商品类型且有关联商品，添加商品信息
-		if banner.Type == 1 && banner.Goods != nil {
-			item.GoodsInfo = &dto.GoodsBaseInfo{
-				GoodsId:  banner.Goods.Id,
-				Name:     banner.Goods.Name,
-				CoverImg: banner.Goods.CoverImg,
-				Price:    banner.Goods.Price,
+		// 如果是商品类型且有目标ID，获取商品信息
+		if banner.Type == 1 && banner.TargetId > 0 {
+			var goods shop.GoodsDO
+			if err := (&shop.GoodsDO{}).Query().Where("id = ?", banner.TargetId).First(&goods).Error; err == nil {
+				// 获取商品主图
+				var coverImg string
+				var image shop.ShopGoodsImage
+				if err := (&shop.ShopGoodsImage{}).Query().Where("goods_id = ? AND position = ?", goods.Id, 1).
+					First(&image).Error; err == nil {
+					coverImg = image.Url
+				}
+
+				// 获取商品最低价格（从SKU中获取）
+				var minPrice float64
+				var sku shop.ShopGoodsSku
+				if err := (&shop.ShopGoodsSku{}).Query().Where("goods_id = ? AND status = 1", goods.Id).
+					Order("price ASC").First(&sku).Error; err == nil {
+					minPrice = sku.Price
+				}
+
+				item.GoodsInfo = &dto.GoodsBaseInfo{
+					GoodsId:  uint(goods.Id),
+					Name:     goods.Name,
+					CoverImg: coverImg,
+					Price:    minPrice,
+				}
 			}
 		}
 		result = append(result, item)
@@ -117,6 +130,9 @@ func (s *BannerService) CreateBanner(req *dto.BannerCreateReq) error {
 
 // 更新Banner
 func (s *BannerService) UpdateBanner(req *dto.BannerUpdateReq) error {
+	// 打印请求参数，方便调试
+	fmt.Printf("UpdateBanner request: %+v\n", req)
+
 	banner := &shop.ShopBanner{Id: req.Id}
 	if err := banner.First(); err != nil {
 		return err
@@ -134,6 +150,7 @@ func (s *BannerService) UpdateBanner(req *dto.BannerUpdateReq) error {
 	banner.Sort = req.Sort
 	banner.Status = req.Status
 
+	fmt.Printf("更新前的banner数据: %+v\n", banner)
 	return banner.Update()
 }
 
@@ -156,7 +173,7 @@ func (s *BannerService) ChangeBannerStatus(id int64, status int) error {
 // GetBannerInfo 获取Banner详情
 func (s *BannerService) GetBannerInfo(id int64) (*dto.BannerInfoResp, error) {
 	var banner shop.ShopBanner
-	if err := db.DB.WnAdmin.Where("id = ?", id).First(&banner).Error; err != nil {
+	if err := db.WnAdmin().Where("id = ?", id).First(&banner).Error; err != nil {
 		return nil, err
 	}
 
@@ -175,20 +192,28 @@ func (s *BannerService) GetBannerInfo(id int64) (*dto.BannerInfoResp, error) {
 	// 如果是商品类型且有目标ID，获取商品信息
 	if banner.Type == 1 && banner.TargetId > 0 {
 		var goods shop.GoodsDO
-		if err := db.DB.WnAdmin.Where("id = ?", banner.TargetId).First(&goods).Error; err == nil {
+		if err := (&shop.GoodsDO{}).Query().Where("id = ?", banner.TargetId).First(&goods).Error; err == nil {
 			// 获取商品主图
 			var coverImg string
 			var image shop.ShopGoodsImage
-			if err := db.DB.WnAdmin.Where("goods_id = ? AND position = ?", goods.Id, 1).
+			if err := (&shop.ShopGoodsImage{}).Query().Where("goods_id = ? AND position = ?", goods.Id, 1).
 				First(&image).Error; err == nil {
 				coverImg = image.Url
+			}
+
+			// 获取商品最低价格（从SKU中获取）
+			var minPrice float64
+			var sku shop.ShopGoodsSku
+			if err := (&shop.ShopGoodsSku{}).Query().Where("goods_id = ? AND status = 1", goods.Id).
+				Order("price ASC").First(&sku).Error; err == nil {
+				minPrice = sku.Price
 			}
 
 			info.GoodsInfo = &dto.GoodsBaseInfo{
 				GoodsId:  uint(goods.Id),
 				Name:     goods.Name,
 				CoverImg: coverImg,
-				Price:    goods.Price,
+				Price:    minPrice,
 			}
 		}
 	}

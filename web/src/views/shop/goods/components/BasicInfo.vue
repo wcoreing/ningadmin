@@ -23,51 +23,29 @@
       />
     </el-form-item>
 
-    <el-form-item label="商品品牌" prop="brandId">
-      <el-select v-model="formData.brandId" placeholder="请选择商品品牌">
-        <el-option
-          v-for="item in brandOptions"
-          :key="item.id"
-          :label="item.name"
-          :value="item.id"
-        />
-      </el-select>
+    <el-form-item label="商品品牌" prop="brand">
+      <el-input v-model="formData.brand" placeholder="请输入商品品牌" />
     </el-form-item>
 
-    <el-form-item label="供应商" prop="supplierId">
-      <el-select v-model="formData.supplierId" placeholder="请选择供应商">
-        <el-option
-          v-for="item in supplierOptions"
-          :key="item.id"
-          :label="item.name"
-          :value="item.id"
-        />
-      </el-select>
+    <el-form-item label="供应商" prop="supplier">
+      <el-input v-model="formData.supplier" placeholder="请输入供应商名称" />
     </el-form-item>
 
-    <el-form-item label="销售价" prop="price">
-      <el-input-number
-        v-model="formData.price"
-        :precision="2"
-        :step="0.1"
-        :min="0"
-      />
+    <el-form-item label="商品类型" prop="type">
+      <el-radio-group v-model="formData.type" @change="handleTypeChange">
+        <el-radio :value="1">普通商品</el-radio>
+        <el-radio :value="2">虚拟商品</el-radio>
+        
+      </el-radio-group>
     </el-form-item>
 
-    <el-form-item label="市场价" prop="originalPrice">
-      <el-input-number
-        v-model="formData.originalPrice"
-        :precision="2"
-        :step="0.1"
-        :min="0"
-      />
-    </el-form-item>
-
-    <el-form-item label="商品库存" prop="stock">
-      <el-input-number
-        v-model="formData.stock"
-        :min="0"
-        :precision="0"
+    <!-- 价格库存设置提示 -->
+    <el-form-item label="价格库存">
+      <el-alert
+        title="商品的价格和库存请在规格设置页面中配置"
+        type="info"
+        :closable="false"
+        show-icon
       />
     </el-form-item>
 
@@ -81,25 +59,36 @@
 
     <el-form-item label="商品状态" prop="status">
       <el-radio-group v-model="formData.status">
-        <el-radio :label="1">上架</el-radio>
-        <el-radio :label="0">下架</el-radio>
+        <el-radio :value="1">上架</el-radio>
+        <el-radio :value="0">下架</el-radio>
       </el-radio-group>
     </el-form-item>
 
-    <el-form-item label="商品标签" prop="tagIds">
-      <el-select v-model="formData.tagIds" multiple placeholder="请选择商品标签">
+    <el-form-item label="商品标签" prop="tagNames">
+      <el-select 
+        v-model="formData.tagNames" 
+        multiple 
+        filterable 
+        allow-create 
+        default-first-option 
+        placeholder="请选择或输入商品标签"
+        @change="handleTagChange"
+      >
         <el-option
           v-for="item in tagOptions"
-          :key="item.id"
+          :key="item.name"
           :label="item.name"
-          :value="item.id"
+          :value="item.name"
         />
       </el-select>
+      <div class="form-tip">可以选择已有标签，也可以输入新标签名称</div>
     </el-form-item>
   </div>
 </template>
 
 <script setup>
+const emit = defineEmits(['type-change'])
+
 defineProps({
   formData: {
     type: Object,
@@ -109,17 +98,40 @@ defineProps({
     type: Array,
     default: () => []
   },
-  brandOptions: {
-    type: Array,
-    default: () => []
-  },
-  supplierOptions: {
-    type: Array,
-    default: () => []
-  },
   tagOptions: {
     type: Array,
     default: () => []
   }
 })
-</script> 
+
+// 商品类型变化处理
+const handleTypeChange = (value) => {
+  emit('type-change', value)
+}
+
+// 标签变化处理
+const handleTagChange = (value) => {
+  // 可以在这里添加标签变化的处理逻辑
+  console.log('标签变化:', value)
+}
+</script>
+
+<style lang="scss" scoped>
+.form-tip {
+  font-size: 12px;
+  color: #909399;
+  margin-top: 4px;
+}
+</style>
+
+<style lang="scss" scoped>
+:deep(.el-alert) {
+  margin: 0;
+}
+
+.form-tip {
+  font-size: 12px;
+  color: #909399;
+  margin-top: 4px;
+}
+</style> 

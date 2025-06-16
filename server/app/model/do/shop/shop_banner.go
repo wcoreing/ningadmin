@@ -42,17 +42,17 @@ const (
 
 // Query 返回查询构建器
 func (m *ShopBanner) Query() *gorm.DB {
-	return db.DB.WnAdmin.Model(m).Where("is_delete = ?", 0)
+	return db.WnAdmin().Model(m).Where("is_delete = ?", 0)
 }
 
 // Create 创建记录
 func (m *ShopBanner) Create() error {
-	return db.DB.WnAdmin.Create(m).Error
+	return db.WnAdmin().Create(m).Error
 }
 
 // Update 更新记录
 func (m *ShopBanner) Update() error {
-	return db.DB.WnAdmin.Save(m).Error
+	return db.WnAdmin().Save(m).Error
 }
 
 // First 获取单条记录

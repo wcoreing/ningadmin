@@ -107,12 +107,15 @@
       </el-table>
 
       <!-- 分页区域 -->
-      <pagination
+      <el-pagination
         v-show="total > 0"
+        v-model:current-page="queryParams.pageNum"
+        v-model:page-size="queryParams.pageSize"
         :total="total"
-        :page="queryParams.pageNum"
-        :limit="queryParams.pageSize"
-        @pagination="handlePagination"
+        :page-sizes="[10, 20, 30, 50]"
+        layout="total, sizes, prev, pager, next, jumper"
+        @size-change="handleSizeChange"
+        @current-change="handleCurrentChange"
       />
     </el-card>
 
@@ -195,8 +198,6 @@
     v-model="fileManagerVisible"
     :multiple="false"
     @select="handleFileSelected"
-    append-to-body
-    destroy-on-close
   />
 
   <!-- 自定义图片预览组件 -->
@@ -210,8 +211,7 @@
   <!-- 使用新的商品选择器组件 -->
   <GoodsSelector
     v-model="goodsSelectVisible"
-    title="选择商品"
-    :selected-ids="selectedIds"
+    :multiple="false"
     @select="handleGoodsSelect"
   />
 </template>
@@ -252,7 +252,7 @@ const form = ref({
   image: undefined,
   url: undefined,
   position: undefined,
-  type: undefined,
+  type: 1, // 默认类型为商品
   targetId: undefined,
   sort: 0,
   status: 1
@@ -287,7 +287,7 @@ const statusOptions = [
 ]
 
 // 上传地址
-const uploadUrl = ref(import.meta.env.VITE_API_URL + '/common/upload')
+const uploadUrl = ref((import.meta.env.VITE_API_BASE_URL || '/api') + '/common/upload')
 
 // 表单ref
 const formRef = ref()
@@ -298,7 +298,6 @@ const fileManagerVisible = ref(false)
 // 商品选择相关
 const goodsSelectVisible = ref(false)
 const targetInfo = ref(null)
-const selectedIds = ref([])
 
 // 选择图片
 const handleSelectImage = () => {
@@ -333,11 +332,12 @@ const reset = () => {
     image: undefined,
     url: undefined,
     position: undefined,
-    type: undefined,
+    type: 1, // 设置默认类型为商品
     targetId: undefined,
     sort: 0,
     status: 1
   }
+  targetInfo.value = null // 清除商品信息
   formRef.value?.resetFields()
 }
 
@@ -394,8 +394,9 @@ const handleUpdate = async (row) => {
     }
     // 如果有商品信息，设置到 targetInfo
     if (res.type === 1 && res.goodsInfo) {
+      const goodsId = res.goodsInfo.goodsId || res.goodsInfo.id
       targetInfo.value = {
-        goodsId: res.goodsInfo.goodsId,
+        goodsId: goodsId,
         name: res.goodsInfo.name,
         coverImg: res.goodsInfo.coverImg,
         price: res.goodsInfo.price
@@ -420,16 +421,39 @@ const submitForm = async () => {
   formRef.value?.validate(async (valid) => {
     if (valid) {
       try {
-        // 转换 targetId 为数字
+        // 准备提交数据
         const submitData = { ...form.value }
-        if (submitData.targetId) {
-          submitData.targetId = parseInt(submitData.targetId)
+        
+        // 确保必填字段有值
+        if (!submitData.type) {
+          ElMessage.error('请选择Banner类型')
+          return
         }
         
+        // 转换 targetId 为数字
+        if (submitData.targetId) {
+          submitData.targetId = parseInt(submitData.targetId)
+        } else if (submitData.type === 1) {
+          // 如果是商品类型但没有选择商品，提示用户
+          ElMessage.error('请选择目标商品')
+          return
+        }
+        
+        // 如果是外链类型，确保有URL
+        if (submitData.type === 3 && !submitData.url) {
+          ElMessage.error('请输入跳转链接')
+          return
+        }
+        
+        console.log('提交数据:', submitData)
+        console.log('表单原始数据:', form.value)
+        
         if (submitData.id) {
+          console.log('执行更新操作')
           await updateBanner(submitData)
           ElMessage.success('修改成功')
         } else {
+          console.log('执行创建操作')
           await createBanner(submitData)
           ElMessage.success('新增成功')
         }
@@ -500,15 +524,20 @@ const closePreview = () => {
 
 // 打开商品选择
 const handleSelectTarget = () => {
-  selectedIds.value = form.value.targetId ? [form.value.targetId] : []
   goodsSelectVisible.value = true
 }
 
 // 修改商品选择处理方法
 const handleGoodsSelect = (goods) => {
-  form.value.targetId = goods.goodsId
-  targetInfo.value = goods
-  selectedIds.value = [goods.goodsId]
+  console.log('选择的商品数据:', goods)
+  const goodsId = goods.goodsId || goods.id
+  form.value.targetId = goodsId
+  targetInfo.value = {
+    goodsId: goodsId,
+    name: goods.name,
+    coverImg: goods.coverImg,
+    price: goods.price
+  }
   goodsSelectVisible.value = false
 }
 
@@ -516,7 +545,18 @@ const handleGoodsSelect = (goods) => {
 const clearSelectedGoods = () => {
   form.value.targetId = undefined
   targetInfo.value = null
-  selectedIds.value = []
+}
+
+// 分页处理函数
+const handleSizeChange = (val) => {
+  queryParams.value.pageSize = val
+  queryParams.value.pageNum = 1
+  getList()
+}
+
+const handleCurrentChange = (val) => {
+  queryParams.value.pageNum = val
+  getList()
 }
 
 // 页面加载时获取列表数据

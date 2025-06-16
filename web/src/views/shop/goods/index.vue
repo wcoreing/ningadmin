@@ -22,36 +22,6 @@
             node-key="id"
           />
         </el-form-item>
-        <el-form-item label="供应商">
-          <el-select 
-            v-model="queryParams.supplierId" 
-            placeholder="请选择供应商" 
-            clearable
-            class="filter-select"
-          >
-            <el-option
-              v-for="item in supplierOptions"
-              :key="item.id"
-              :label="item.name"
-              :value="item.id"
-            />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="商品品牌">
-          <el-select 
-            v-model="queryParams.brandId" 
-            placeholder="请选择商品品牌" 
-            clearable
-            class="filter-select"
-          >
-            <el-option
-              v-for="item in brandOptions"
-              :key="item.id"
-              :label="item.name"
-              :value="item.id"
-            />
-          </el-select>
-        </el-form-item>
         <el-form-item label="商品标签">
           <el-select 
             v-model="queryParams.tagId" 
@@ -74,6 +44,21 @@
             class="filter-input"
           />
         </el-form-item>
+        <el-form-item label="商品类型">
+          <el-select v-model="queryParams.type" placeholder="请选择商品类型" clearable>
+            <el-option label="全部" value="" />
+            <el-option label="普通商品" :value="1" />
+            <el-option label="虚拟商品" :value="2" />
+            
+          </el-select>
+        </el-form-item>
+        <el-form-item label="商品状态">
+          <el-select v-model="queryParams.status" placeholder="商品状态" clearable>
+            <el-option label="全部" value="" />
+            <el-option label="上架" value="1" />
+            <el-option label="下架" value="0" />
+          </el-select>
+        </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleQuery">查询</el-button>
         </el-form-item>
@@ -85,6 +70,7 @@
     <!-- 操作按钮 -->
     <div class="table-operations">
       <el-button type="primary" @click="handleAdd">添加商品</el-button>
+      <el-button type="primary" @click="handleAddCombo">新增套餐</el-button>
       <el-button 
         type="primary" 
         icon="Position" 
@@ -127,10 +113,19 @@
           </el-image>
         </template>
       </el-table-column>
-      <el-table-column label="商品名称" prop="goodsName" min-width="200" show-overflow-tooltip />
+      <el-table-column label="商品名称" prop="name" min-width="200" show-overflow-tooltip />
       <el-table-column label="商品分类" prop="categoryName" width="120" show-overflow-tooltip />
-      <el-table-column label="供应商" prop="supplierName" width="120" show-overflow-tooltip />
-      <el-table-column label="品牌" prop="brandName" width="120" show-overflow-tooltip />
+      <el-table-column label="商品类型" width="100">
+        <template #default="{ row }">
+          <el-tag 
+            :type="row.type === 1 ? 'primary' : row.type === 2 ? 'warning' : 'success'"
+            size="small"
+          >
+            {{ row.type === 1 ? '普通商品' : '虚拟商品' }}
+          </el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="品牌" prop="brand" width="120" show-overflow-tooltip />
       <el-table-column label="标签" width="120" show-overflow-tooltip>
         <template #default="{ row }">
           <el-tag 
@@ -143,13 +138,20 @@
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="商品售价" prop="price" width="100">
+      <el-table-column label="价格范围" width="120">
         <template #default="{ row }">
-          <span class="price">{{ row.price }}</span>
+          <span class="price">
+            <template v-if="row.minPrice === row.maxPrice">
+              ¥{{ row.minPrice }}
+            </template>
+            <template v-else>
+              ¥{{ row.minPrice }} - ¥{{ row.maxPrice }}
+            </template>
+          </span>
         </template>
       </el-table-column>
       <el-table-column label="销量" prop="sales" width="80" />
-      <el-table-column label="库存" prop="stock" width="80" />
+      <el-table-column label="总库存" prop="totalStock" width="80" />
       <el-table-column label="排序" prop="sort" width="80" />
       <el-table-column label="状态" width="100">
         <template #default="{ row }">
@@ -161,10 +163,18 @@
           />
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="180" fixed="right">
+      <el-table-column label="操作" width="220" fixed="right">
         <template #default="{ row }">
           <el-button link type="primary" @click="handleEdit(row)">编辑</el-button>
           <el-button link type="primary" @click="handleCopy(row)">复制</el-button>
+          <el-button 
+            v-if="row.type === 3" 
+            link 
+            type="success" 
+            @click="handleViewCombo(row)"
+          >
+            查看套餐
+          </el-button>
           <el-button 
             link 
             type="danger" 
@@ -194,8 +204,6 @@
       :type="dialogType"
       :data="formData"
       :category-options="categoryOptions"
-      :brand-options="brandOptions"
-      :supplier-options="supplierOptions"
       :tag-options="tagOptions"
       :upload-url="uploadUrl"
       @success="handleFormSuccess"
@@ -228,6 +236,44 @@
         <el-button type="primary" @click="confirmMove">确定</el-button>
       </template>
     </el-dialog>
+
+    <!-- 套餐配置对话框 -->
+    <el-dialog title="套餐配置" v-model="comboDialogVisible" width="80%" :before-close="handleComboDialogClose">
+      <div v-if="comboConfig">
+        <div class="combo-header">
+          <h3>{{ comboConfig.name }}</h3>
+          <p>{{ comboConfig.description }}</p>
+          <p>基础价格: ¥{{ comboConfig.price }}</p>
+        </div>
+        
+        <div v-for="group in comboConfig.groups" :key="group.id" class="combo-group">
+          <div class="group-header">
+            <h4>{{ group.name }}</h4>
+            <span class="group-desc">{{ group.description }}</span>
+            <el-tag v-if="group.isRequired" type="danger" size="mini">必选</el-tag>
+            <el-tag v-else type="info" size="mini">可选</el-tag>
+            <span class="select-rule">
+              ({{ group.minSelect }}-{{ group.maxSelect }}选)
+            </span>
+          </div>
+          
+          <div class="group-options">
+            <div v-for="option in group.options" :key="option.id" class="option-item">
+              <div class="option-info">
+                <span class="option-name">{{ option.name }}</span>
+                <span class="option-price">
+                  +¥{{ option.addPrice }}
+                  <span v-if="option.originalPrice">(原价: ¥{{ option.originalPrice }})</span>
+                </span>
+                <span class="option-quantity">数量: {{ option.quantity }}</span>
+                <span class="option-stock">库存: {{ option.stock }}</span>
+                <el-tag v-if="option.isDefault" type="success" size="mini">默认</el-tag>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -241,12 +287,11 @@ import {
   updateGoods,
   copyGoods,
   batchMoveGoods,
-  batchDeleteGoods
+  batchDeleteGoods,
+  getComboConfig
 } from '@/api/shop/goods'
 import { getCategoryList } from '@/api/shop/category'
-import { getBrandList } from '@/api/shop/brand'
 import { getTagList } from '@/api/shop/tag'
-import { getSupplierList } from '@/api/shop/supplier'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowDown, Picture } from '@element-plus/icons-vue'
 import GoodsForm from './components/GoodsForm.vue'
@@ -257,9 +302,8 @@ const queryParams = ref({
   pageSize: 10,
   name: '',
   categoryId: '',
-  brandId: '',
   tagId: '',
-  supplierId: '',
+  type: '',
   status: ''
 })
 
@@ -271,33 +315,33 @@ const selectedRows = ref([])
 
 // 添加下拉选项数据
 const categoryOptions = ref([])
-const supplierOptions = ref([])
-const brandOptions = ref([])
 const tagOptions = ref([])
 
 // 添加上传地址配置
-const uploadUrl = ref(import.meta.env.VITE_API_URL + '/common/upload') // 根据实际的上传接口配置
+const uploadUrl = ref((import.meta.env.VITE_API_BASE_URL || '/api') + '/common/upload') // 根据实际的上传接口配置
 
 // 获取所有下拉选项数据
 const getOptions = async () => {
   try {
-    const [categoryRes, supplierRes, brandRes, tagRes] = await Promise.all([
-      getCategoryList(),
-      getSupplierList(),
-      getBrandList(),
+    console.log('开始获取分类和标签数据...')
+    
+    const [categoryRes, tagRes] = await Promise.all([
+      getCategoryList({ module: 'goods' }),
       getTagList()
     ])
     
+    console.log('获取到的分类数据:', categoryRes)
+    console.log('获取到的标签数据:', tagRes)
+    
     // 分类数据已经是树形结构，直接使用
     categoryOptions.value = categoryRes || []
-    supplierOptions.value = supplierRes || []
-    brandOptions.value = brandRes || []
     tagOptions.value = tagRes || []
+    
+    console.log('设置后的分类选项:', categoryOptions.value)
+    console.log('设置后的标签选项:', tagOptions.value)
   } catch (error) {
     console.error('获取选项数据失败:', error)
     categoryOptions.value = []
-    supplierOptions.value = []
-    brandOptions.value = []
     tagOptions.value = []
   }
 }
@@ -315,8 +359,6 @@ const formatGoodsData = (list) => {
       goodsId: item.goodsId,
       goodsName: item.name,
       categoryId: item.categoryId,
-      brandId: item.brandId,
-      supplierId: item.supplierId,
       coverImg: item.coverImg || '', // 从主图中获取
       price: item.price,
       originalPrice: item.originalPrice,
@@ -324,14 +366,16 @@ const formatGoodsData = (list) => {
       stock: item.stock,
       sort: item.sort,
       status: Number(item.status), // 直接转换为数字
-      type: item.type === 1 ? '普通商品' : '虚拟商品',
+      type: item.type, // 保持数字类型
       source: '自营',
       description: item.description || '', // 确保有值
-      tagIds: item.tagIds || [],
+      tagNames: item.tagNames || [],
       categoryName: item.categoryName,
-      supplierName: item.supplierName,
-      brandName: item.brandName,
-      tagNames: item.tagNames || []
+      tagNames: item.tagNames || [],
+      minPrice: item.minPrice,
+      maxPrice: item.maxPrice,
+      brand: item.brand,
+      totalStock: item.totalStock
     }
   })
 }
@@ -346,9 +390,8 @@ const getList = async () => {
       pageSize: queryParams.value.pageSize,
       name: queryParams.value.name,
       categoryId: queryParams.value.categoryId || undefined,
-      brandId: queryParams.value.brandId || undefined,
       tagId: queryParams.value.tagId || undefined,
-      supplierId: queryParams.value.supplierId || undefined,
+      type: queryParams.value.type || undefined,
       status: queryParams.value.status || undefined
     }
     
@@ -433,8 +476,6 @@ const handleAdd = () => {
     goodsId: undefined,
     goodsName: '',
     categoryId: undefined,
-    brandId: undefined,
-    supplierId: undefined,
     price: 0,
     originalPrice: 0,
     stock: 0,
@@ -459,8 +500,6 @@ const handleEdit = async (row) => {
       goodsId: res.goodsId,
       goodsName: res.goodsName,
       categoryId: res.categoryId,
-      brandId: res.brandId,
-      supplierId: res.supplierId,
       price: res.price,
       originalPrice: res.originalPrice,
       stock: res.stock,
@@ -587,6 +626,32 @@ const handleBatchDelete = () => {
   })
 }
 
+// 新增套餐
+const handleAddCombo = () => {
+  // 实现新增套餐的逻辑
+}
+
+// 查看套餐配置
+const comboDialogVisible = ref(false)
+const comboConfig = ref(null)
+
+const handleComboDialogClose = () => {
+  comboDialogVisible.value = false
+  comboConfig.value = null
+}
+
+// 查看套餐配置
+const handleViewCombo = async (row) => {
+  try {
+    const res = await getComboConfig(row.goodsId)
+    comboConfig.value = res
+    comboDialogVisible.value = true
+  } catch (error) {
+    console.error('获取套餐配置失败:', error)
+    ElMessage.error('获取套餐配置失败')
+  }
+}
+
 onMounted(() => {
   getList()
   getOptions() // 获取所有下拉选项数据
@@ -645,6 +710,93 @@ onMounted(() => {
     background: #f5f7fa;
     color: #909399;
     font-size: 20px;
+  }
+
+  .combo-header {
+    margin-bottom: 20px;
+    padding: 15px;
+    background-color: #f5f7fa;
+    border-radius: 4px;
+  }
+
+  .combo-header h3 {
+    margin: 0 0 10px 0;
+    color: #303133;
+  }
+
+  .combo-header p {
+    margin: 5px 0;
+    color: #606266;
+  }
+
+  .combo-group {
+    margin-bottom: 25px;
+    border: 1px solid #e4e7ed;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .group-header {
+    padding: 12px 15px;
+    background-color: #fafafa;
+    border-bottom: 1px solid #e4e7ed;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .group-header h4 {
+    margin: 0;
+    color: #303133;
+  }
+
+  .group-desc {
+    color: #909399;
+    font-size: 12px;
+  }
+
+  .select-rule {
+    color: #909399;
+    font-size: 12px;
+    margin-left: auto;
+  }
+
+  .group-options {
+    padding: 15px;
+  }
+
+  .option-item {
+    padding: 10px;
+    margin-bottom: 10px;
+    border: 1px solid #e4e7ed;
+    border-radius: 4px;
+    background-color: #fff;
+  }
+
+  .option-item:last-child {
+    margin-bottom: 0;
+  }
+
+  .option-info {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+  }
+
+  .option-name {
+    font-weight: 500;
+    color: #303133;
+  }
+
+  .option-price {
+    color: #e6a23c;
+    font-weight: 500;
+  }
+
+  .option-quantity,
+  .option-stock {
+    color: #909399;
+    font-size: 12px;
   }
 }
 </style> 

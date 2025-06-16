@@ -32,7 +32,7 @@ func (s *ShopSupplier) TableName() string {
 
 // Query 获取查询构建器
 func (s *ShopSupplier) Query() *gorm.DB {
-	query := db.DB.WnAdmin.Model(s).Where("is_delete = ?", 0)
+	query := db.WnAdmin().Model(s).Where("is_delete = ?", 0)
 
 	// 供应商名称
 	if s.Name != "" {

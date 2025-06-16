@@ -38,7 +38,7 @@ func (RoleDO) TableName() string {
 
 // Query 获取查询构建器
 func (r *RoleDO) Query() *gorm.DB {
-	return db.DB.WnAdmin.Model(r).Where("del_flag = ?", "0")
+	return db.WnAdmin().Model(r).Where("del_flag = ?", "0")
 }
 
 // Create 创建记录
@@ -53,7 +53,7 @@ func (r *RoleDO) Update() error {
 
 // Delete 删除记录
 func (r *RoleDO) Delete() error {
-	return db.DB.WnAdmin.Transaction(func(tx *gorm.DB) error {
+	return db.WnAdmin().Transaction(func(tx *gorm.DB) error {
 		// 删除角色权限关联
 		if err := tx.Table("sys_role_permission").Where("role_id = ?", r.RoleID).Delete(nil).Error; err != nil {
 			return err
@@ -93,14 +93,14 @@ func (r *RoleDO) UpdateStatus() error {
 // HasUsers 检查角色是否已分配用户
 func (r *RoleDO) HasUsers() (bool, error) {
 	var count int64
-	err := db.DB.WnAdmin.Model(&UserRoleDO{}).Where("role_id = ?", r.RoleID).Count(&count).Error
+	err := db.WnAdmin().Model(&UserRoleDO{}).Where("role_id = ?", r.RoleID).Count(&count).Error
 	return count > 0, err
 }
 
 // GetRolePermissions 获取角色权限ID列表
 func (r *RoleDO) GetRolePermissions() ([]int64, error) {
 	var permissionIDs []int64
-	err := db.DB.WnAdmin.Table("sys_role_permission").
+	err := db.WnAdmin().Table("sys_role_permission").
 		Where("role_id = ?", r.RoleID).
 		Pluck("permission_id", &permissionIDs).Error
 	return permissionIDs, err
@@ -108,7 +108,7 @@ func (r *RoleDO) GetRolePermissions() ([]int64, error) {
 
 // UpdateRolePermissions 更新角色权限
 func (r *RoleDO) UpdateRolePermissions(permissionIDs []int64) error {
-	return db.DB.WnAdmin.Transaction(func(tx *gorm.DB) error {
+	return db.WnAdmin().Transaction(func(tx *gorm.DB) error {
 		// 删除原有权限
 		if err := tx.Table("sys_role_permission").Where("role_id = ?", r.RoleID).Delete(nil).Error; err != nil {
 			return err

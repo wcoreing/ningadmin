@@ -16,7 +16,10 @@ type ShopOrder struct {
 	PayAmount       float64            `json:"payAmount" gorm:"not null"`
 	FreightAmount   float64            `json:"freightAmount" gorm:"not null"`
 	DiscountAmount  float64            `json:"discountAmount" gorm:"not null"`
-	Status          string             `json:"status" gorm:"not null;default:'pending'"`
+	Status          string             `json:"status" gorm:"not null;default:'unpaid'"`
+	DiningType      string             `json:"diningType" gorm:"default:'takeout'"`
+	TableId         *int64             `json:"tableId"`
+	TableNo         string             `json:"tableNo"`
 	PayType         int                `json:"payType"`
 	PayTime         *time.Time         `json:"payTime"`
 	ReceiverName    string             `json:"receiverName" gorm:"not null"`
@@ -39,5 +42,5 @@ type ShopOrder struct {
 
 // Query 获取查询构建器
 func (m *ShopOrder) Query() *gorm.DB {
-	return db.DB.WnAdmin.Model(m).Where("is_delete = ?", 0)
+	return db.WnAdmin().Model(m).Where("is_delete = ?", 0)
 }

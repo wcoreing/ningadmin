@@ -1,7 +1,22 @@
 <template>
   <div class="app-container">
+    <!-- 页面标题 -->
+    <div class="page-header">
+      <h2>{{ getModuleName() }}分类管理</h2>
+    </div>
     <!-- 搜索工具栏 -->
     <div class="filter-container">
+      <el-select
+        v-model="queryParams.module"
+        placeholder="选择模块"
+        class="filter-item"
+        style="width: 150px"
+        @change="handleModuleChange"
+      >
+        <el-option label="商品分类" value="goods" />
+        <el-option label="套餐分类" value="combo" />
+        <el-option label="表单分类" value="form" />
+      </el-select>
       <el-input
         v-model="queryParams.name"
         placeholder="分类名称"
@@ -111,6 +126,13 @@
         :rules="rules"
         label-width="80px"
       >
+        <el-form-item label="模块类型">
+          <el-select v-model="form.module" placeholder="选择模块" disabled>
+            <el-option label="商品分类" value="goods" />
+            <el-option label="套餐分类" value="combo" />
+            <el-option label="表单分类" value="form" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="上级分类">
           <el-tree-select
             v-model="form.parent_id"
@@ -140,8 +162,8 @@
         </el-form-item>
         <el-form-item label="状态">
           <el-radio-group v-model="form.status">
-            <el-radio :label="1">启用</el-radio>
-            <el-radio :label="0">禁用</el-radio>
+            <el-radio :value="1">启用</el-radio>
+            <el-radio :value="0">禁用</el-radio>
           </el-radio-group>
         </el-form-item>
       </el-form>
@@ -175,6 +197,7 @@ const loading = ref(false)
 const categoryList = ref([])
 const categoryOptions = ref([])
 const queryParams = ref({
+  module: 'goods', // 默认显示商品分类
   name: '',
   status: undefined
 })
@@ -190,7 +213,8 @@ const form = ref({
   name: '',
   icon: '',
   sort: 0,
-  status: 1
+  status: 1,
+  module: 'goods' // 默认模块
 })
 
 const rules = {
@@ -200,13 +224,22 @@ const rules = {
 const formRef = ref()
 const fileManagerVisible = ref(false)
 
+// 模块变更处理
+const handleModuleChange = () => {
+  // 重置搜索条件
+  queryParams.value.name = ''
+  queryParams.value.status = undefined
+  // 重新加载数据
+  getList()
+}
+
 // 查询分类列表
 const getList = async () => {
   try {
     loading.value = true
     const res = await getCategoryList(queryParams.value)
     console.log('分类列表响应:', res)
-    console.log('分类数据结构:', JSON.stringify(res.data, null, 2))
+    console.log('分类数据结构:', JSON.stringify(res, null, 2))
     // 确保数据是数组
     if (Array.isArray(res)) {
       categoryList.value = res
@@ -249,7 +282,8 @@ const resetForm = () => {
     name: '',
     icon: '',
     sort: 0,
-    status: 1
+    status: 1,
+    module: queryParams.value.module // 使用当前选择的模块
   }
   formRef.value?.resetFields()
 }
@@ -266,7 +300,8 @@ const handleAdd = (row?: any) => {
   if (row) {
     form.value.parent_id = row.id
   }
-  dialog.value.title = '添加分类'
+  form.value.module = queryParams.value.module // 设置为当前模块
+  dialog.value.title = `添加${getModuleName()}分类`
   dialog.value.visible = true
 }
 
@@ -274,8 +309,18 @@ const handleAdd = (row?: any) => {
 const handleUpdate = (row: any) => {
   resetForm()
   form.value = { ...row }
-  dialog.value.title = '修改分类'
+  dialog.value.title = `修改${getModuleName()}分类`
   dialog.value.visible = true
+}
+
+// 获取模块名称
+const getModuleName = () => {
+  const moduleMap = {
+    goods: '商品',
+    combo: '套餐',
+    form: '表单'
+  }
+  return moduleMap[queryParams.value.module] || '分类'
 }
 
 // 提交表单
@@ -300,11 +345,11 @@ const submitForm = async () => {
 
 // 删除按钮操作
 const handleDelete = (row: any) => {
-  ElMessageBox.confirm('是否确认删除该分类?', '警告', {
+  ElMessageBox.confirm(`是否确认删除该${getModuleName()}分类?`, '警告', {
     type: 'warning'
   }).then(async () => {
     try {
-      await deleteCategory(row.id)
+      await deleteCategory(row.id, queryParams.value.module)
       ElMessage.success('删除成功')
       getList()
     } catch (error) {
@@ -333,6 +378,17 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.page-header {
+  margin-bottom: 20px;
+}
+
+.page-header h2 {
+  margin: 0;
+  color: #303133;
+  font-size: 20px;
+  font-weight: 500;
+}
+
 .category-icon {
   width: 20px;
   height: 20px;

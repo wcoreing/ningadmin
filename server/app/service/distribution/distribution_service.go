@@ -17,7 +17,7 @@ func NewDistributionService() *DistributionService {
 // GetConfig 获取分销配置
 func (s *DistributionService) GetConfig() (*dto.DistributionConfigDTO, error) {
 	var config shop.DistributionConfig
-	if err := db.DB.WnAdmin.First(&config).Error; err != nil {
+	if err := db.WnAdmin().First(&config).Error; err != nil {
 		return nil, err
 	}
 	return &dto.DistributionConfigDTO{
@@ -47,7 +47,7 @@ func (s *DistributionService) UpdateConfig(req *dto.DistributionConfigDTO) error
 		CenterType:   req.CenterType,
 		UpdateTime:   time.Now(),
 	}
-	return db.DB.WnAdmin.Save(config).Error
+	return db.WnAdmin().Save(config).Error
 }
 
 // GetDistributorList 获取分销员列表
@@ -57,7 +57,7 @@ func (s *DistributionService) GetDistributorList(query *dto.DistributorQueryDTO)
 		total int64
 	)
 
-	db := db.DB.WnAdmin.Model(&shop.Distributor{})
+	db := db.WnAdmin().Model(&shop.Distributor{})
 	if query.Status > 0 {
 		db = db.Where("status = ?", query.Status)
 	}
@@ -96,7 +96,7 @@ func (s *DistributionService) AuditDistributor(req *dto.DistributorAuditDTO) err
 		return errors.New("无效的审核状态")
 	}
 
-	return db.DB.WnAdmin.Model(&shop.Distributor{}).
+	return db.WnAdmin().Model(&shop.Distributor{}).
 		Where("id = ?", req.ID).
 		Updates(map[string]interface{}{
 			"status":      req.Status,

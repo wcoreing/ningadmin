@@ -55,15 +55,16 @@
           >
             <div 
               class="goods-item"
+              :class="{ 'selected': isSelected(item) }"
+              @click="handleSelect(item)"
             >
-              <div class="use-button" @click.stop="handleSelect(item)">
+              <div class="use-button" v-if="isSelected(item)">
                 <el-icon><Check /></el-icon>
               </div>
               <el-image 
                 :src="item.coverImg" 
                 fit="contain"
-                :preview-teleported="true"
-                :preview-src-list="[item.coverImg]"
+                :preview-disabled="true"
                 class="goods-image"
               >
                 <template #error>
@@ -75,17 +76,22 @@
               <div class="goods-info">
                 <div class="goods-name" :title="item.name">{{ item.name }}</div>
                 <div class="goods-price">
-                  <span class="price">¥{{ item.price }}</span>
-                  <span class="stock">库存: {{ item.stock }}</span>
+                  <span class="price">¥{{ item.minPrice || item.price || 0 }}</span>
+                  <span class="stock">库存: {{ item.totalStock || item.stock || 0 }}</span>
                 </div>
               </div>
             </div>
           </el-col>
         </el-row>
+        
+        <!-- 空状态 -->
+        <div v-if="!loading && goodsList.length === 0" class="empty-state">
+          <el-empty description="暂无商品数据" />
+        </div>
       </div>
 
       <!-- 分页 -->
-      <div class="pagination-container">
+      <div class="pagination-container" v-if="total > 0">
         <el-pagination
           v-model:current-page="queryParams.pageNum"
           v-model:page-size="queryParams.pageSize"
@@ -108,7 +114,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { getGoodsList } from '@/api/shop/goods'
 import { getCategoryList } from '@/api/shop/category'
 import { ElMessage } from 'element-plus'
@@ -165,10 +171,14 @@ const getList = async () => {
   loading.value = true
   try {
     const res = await getGoodsList(queryParams.value)
-    goodsList.value = res.list
-    total.value = res.total
+    console.log('商品列表数据:', res)
+    goodsList.value = res.list || []
+    total.value = res.total || 0
   } catch (error) {
     console.error('获取商品列表失败:', error)
+    ElMessage.error('获取商品列表失败')
+    goodsList.value = []
+    total.value = 0
   }
   loading.value = false
 }
@@ -176,40 +186,50 @@ const getList = async () => {
 // 获取分类列表
 const getCategories = async () => {
   try {
-    const res = await getCategoryList({
-      parentId: 0
-    })
+    const res = await getCategoryList({ module: 'goods' })
+    console.log('分类列表数据:', res)
     // 将多级分类转换为带层级的一维数组
     const flattenCategories = (categories, level = 0) => {
       let result = []
-      categories.forEach(item => {
-        result.push({
-          categoryId: item.id,
-          categoryName: item.name,
-          level: level  // 添加层级信息
+      if (Array.isArray(categories)) {
+        categories.forEach(item => {
+          result.push({
+            categoryId: item.id || item.categoryId,
+            categoryName: item.name || item.categoryName,
+            level: level  // 添加层级信息
+          })
+          if (item.children && item.children.length) {
+            result = result.concat(flattenCategories(item.children, level + 1))
+          }
         })
-        if (item.children && item.children.length) {
-          result = result.concat(flattenCategories(item.children, level + 1))
-        }
-      })
+      }
       return result
     }
-    categoryOptions.value = flattenCategories(res)
+    const categories = res.list || res || []
+    categoryOptions.value = flattenCategories(categories)
   } catch (error) {
     console.error('获取分类列表失败:', error)
+    categoryOptions.value = []
   }
 }
 
 // 查询操作
 const handleQuery = () => {
+  // 构建查询参数
+  const params = {
+    pageNum: 1,
+    pageSize: queryParams.value.pageSize,
+    categoryId: queryParams.value.categoryId
+  }
+  
   // 如果输入的是数字，则认为是在搜索商品ID
   if (queryParams.value.name && /^\d+$/.test(queryParams.value.name)) {
-    queryParams.value.goodsId = parseInt(queryParams.value.name)
-    queryParams.value.name = ''
-  } else {
-    queryParams.value.goodsId = undefined
+    params.goodsId = parseInt(queryParams.value.name)
+  } else if (queryParams.value.name) {
+    params.name = queryParams.value.name
   }
-  queryParams.value.pageNum = 1
+  
+  queryParams.value = params
   getList()
 }
 
@@ -227,8 +247,34 @@ const resetQuery = () => {
 
 // 选择商品
 const handleSelect = (item) => {
+  // 统一使用 goodsId 作为商品ID，同时兼容 id
+  const goodsId = item.goodsId || item.id
+  // 统一价格字段，优先使用 minPrice，然后是 price
+  const price = item.minPrice || item.price || 0
+  // 统一库存字段，优先使用 totalStock，然后是 stock
+  const stock = item.totalStock || item.stock || 0
+  // 统一商品名称字段
+  const goodsName = item.goodsName || item.name
+  // 统一图片字段
+  const goodsImage = item.goodsImage || item.coverImg || item.image
+  
+  const goodsData = {
+    ...item,
+    goodsId: goodsId,
+    id: goodsId,
+    name: goodsName,
+    goodsName: goodsName,
+    price: price,
+    stock: stock,
+    coverImg: goodsImage,
+    goodsImage: goodsImage,
+    image: goodsImage
+  }
+  
+  console.log('选择商品数据:', goodsData)
+  
   if (props.multiple) {
-    const index = selectedGoods.value.findIndex(i => i.goodsId === item.goodsId)
+    const index = selectedGoods.value.findIndex(i => (i.goodsId || i.id) === goodsId)
     if (index > -1) {
       selectedGoods.value.splice(index, 1)
     } else {
@@ -236,10 +282,10 @@ const handleSelect = (item) => {
         ElMessage.warning(`最多只能选择 ${props.max} 个商品`)
         return
       }
-      selectedGoods.value.push(item)
+      selectedGoods.value.push(goodsData)
     }
   } else {
-    selectedGoods.value = [item]
+    selectedGoods.value = [goodsData]
     ElMessage.success('已选择商品：' + item.name)
     confirmSelection()
   }
@@ -247,16 +293,24 @@ const handleSelect = (item) => {
 
 // 判断是否选中
 const isSelected = (item) => {
-  return selectedGoods.value.some(i => i.goodsId === item.goodsId)
+  const goodsId = item.goodsId || item.id
+  return selectedGoods.value.some(i => (i.goodsId || i.id) === goodsId)
 }
 
 // 确认选择
 const confirmSelection = () => {
+  console.log('确认选择 - 当前选中商品:', selectedGoods.value)
+  console.log('确认选择 - 是否多选模式:', props.multiple)
+  
   if (selectedGoods.value.length === 0) {
     ElMessage.warning('请选择商品')
     return
   }
-  emit('select', props.multiple ? selectedGoods.value : selectedGoods.value[0])
+  
+  const emitData = props.multiple ? selectedGoods.value : selectedGoods.value[0]
+  console.log('确认选择 - 发送的数据:', emitData)
+  
+  emit('select', emitData)
   dialogVisible.value = false
 }
 
@@ -271,6 +325,25 @@ const handleCurrentChange = (val) => {
   getList()
 }
 
+// 监听对话框打开，初始化数据
+watch(dialogVisible, (newVal) => {
+  if (newVal) {
+    // 重置选中状态
+    selectedGoods.value = []
+    // 重置查询参数
+    queryParams.value = {
+      pageNum: 1,
+      pageSize: 18,
+      name: '',
+      goodsId: undefined,
+      categoryId: undefined
+    }
+    // 加载数据
+    getCategories()
+    getList()
+  }
+})
+
 // 添加方法获取商品详情
 const getGoodsDetail = async (id) => {
   try {
@@ -282,10 +355,6 @@ const getGoodsDetail = async (id) => {
     console.error('获取商品详情失败:', error)
   }
 }
-
-// 初始化
-getCategories()
-getList()
 </script>
 
 <style lang="scss" scoped>
@@ -298,6 +367,8 @@ getList()
   }
 
   .goods-list {
+    min-height: 300px;
+    
     .goods-item {
       position: relative;
       margin-bottom: 12px;
@@ -308,11 +379,17 @@ getList()
       border: 1px solid #ebeef5;
       background-color: #fff;
 
+      &.selected {
+        border-color: var(--el-color-primary);
+        box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.2);
+        background-color: #f0f9ff;
+      }
+
       .use-button {
         position: absolute;
         top: 8px;
         right: 8px;
-        background: var(--el-color-primary);
+        background: var(--el-color-success);
         color: #fff;
         width: 24px;
         height: 24px;
@@ -321,26 +398,17 @@ getList()
         display: flex;
         align-items: center;
         justify-content: center;
-        opacity: 0;
-        transition: opacity 0.3s;
+        transition: all 0.3s;
         z-index: 2;
         
         .el-icon {
           font-size: 12px;
-        }
-        
-        &:hover {
-          transform: scale(1.1);
         }
       }
 
       &:hover {
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         transform: translateY(-2px);
-        
-        .use-button {
-          opacity: 1;
-        }
       }
 
       .goods-image {
@@ -401,6 +469,11 @@ getList()
           }
         }
       }
+    }
+    
+    .empty-state {
+      text-align: center;
+      padding: 40px 0;
     }
   }
 

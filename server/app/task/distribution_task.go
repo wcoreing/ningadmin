@@ -14,7 +14,7 @@ func UnfreezeIncome() {
 	incomeService := distributionService.NewIncomeService()
 
 	var incomes []distribution.DistributionIncome
-	err := db.DB.WnAdmin.Where("status = 0 AND unfreeze_time <= ?", time.Now()).Find(&incomes).Error
+	err := db.WnAdmin().Where("status = 0 AND unfreeze_time <= ?", time.Now()).Find(&incomes).Error
 	if err != nil {
 		return
 	}

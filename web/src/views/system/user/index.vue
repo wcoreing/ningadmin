@@ -115,15 +115,15 @@
         </el-form-item>
         <el-form-item label="性别">
           <el-radio-group v-model="userForm.sex">
-            <el-radio label="0">男</el-radio>
-            <el-radio label="1">女</el-radio>
-            <el-radio label="2">未知</el-radio>
+            <el-radio value="0">男</el-radio>
+            <el-radio value="1">女</el-radio>
+            <el-radio value="2">未知</el-radio>
           </el-radio-group>
         </el-form-item>
         <el-form-item label="状态">
           <el-radio-group v-model="userForm.status">
-            <el-radio label="0">正常</el-radio>
-            <el-radio label="1">停用</el-radio>
+            <el-radio value="0">正常</el-radio>
+            <el-radio value="1">停用</el-radio>
           </el-radio-group>
         </el-form-item>
         <el-form-item label="角色" prop="roleId">

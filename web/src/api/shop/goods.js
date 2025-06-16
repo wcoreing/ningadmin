@@ -4,12 +4,17 @@ const api = {
   GoodsList: '/shop/goods/list',
   GoodsInfo: '/shop/goods/info',
   GoodsUpdate: '/shop/goods/update',
-  GoodsDelete: '/shop/goods',
+  GoodsDelete: '/shop/goods/delete',
   GoodsStatus: '/shop/goods/status',
   GoodsCreate: '/shop/goods/create',
   GoodsCopy: '/shop/goods/copy',
   GoodsMove: '/shop/goods/move',
-  GoodsBatchDelete: '/shop/goods/batch'
+  GoodsBatchDelete: '/shop/goods/batch-delete',
+  // 套餐相关接口
+  ComboConfig: '/shop/goods/combo/config',
+  ComboCalculate: '/shop/goods/combo/calculate',
+  ComboValidate: '/shop/goods/combo/validate',
+  ComboDefault: '/shop/goods/combo/default'
 }
 
 // 获取商品列表
@@ -41,8 +46,11 @@ export function updateGoodsStatus(data) {
 // 获取商品分类列表
 export function getCategoryList() {
   return request({
-    url: '/shop/category/list',
-    method: 'get'
+    url: '/common/category/list',
+    method: 'get',
+    params: {
+      module: 'goods'
+    }
   })
 }
 
@@ -122,3 +130,44 @@ export function batchDeleteGoods(goodsIds) {
     data: { goodsIds }
   })
 } 
+
+// ========== 套餐相关接口 ==========
+
+// 获取套餐配置
+export function getComboConfig(comboId) {
+  return request({
+    url: `${api.ComboConfig}/${comboId}`,
+    method: 'get'
+  })
+}
+
+// 计算套餐价格
+export function calculateComboPrice(data) {
+  return request({
+    url: api.ComboCalculate,
+    method: 'post',
+    data
+  })
+}
+
+// 验证套餐选择
+export function validateComboSelection(data) {
+  return request({
+    url: api.ComboValidate,
+    method: 'post',
+    data
+  })
+}
+
+// 获取默认套餐选择
+export function getDefaultComboSelection(comboId) {
+  return request({
+    url: `${api.ComboDefault}/${comboId}`,
+    method: 'get'
+  })
+}
+
+// 兼容旧接口名称
+export const listGoods = getGoodsList
+export const getGoods = getGoodsInfo
+export const delGoods = deleteGoods 

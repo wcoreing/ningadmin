@@ -5,12 +5,14 @@ import (
 	"wnadmin/app/provider/mylog"
 
 	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
 )
 
 type Response struct {
-	Code int         `json:"code"`
-	Data interface{} `json:"data"`
-	Msg  string      `json:"msg"`
+	Code      int         `json:"code"`
+	Data      interface{} `json:"data"`
+	Msg       string      `json:"msg"`
+	RequestID string      `json:"request_id,omitempty"`
 }
 
 const (
@@ -19,14 +21,33 @@ const (
 )
 
 func Result(Code int, data interface{}, Msg string, c *gin.Context) {
-	// 开始时间
-	mylog.Log.Info("response", Code, data, Msg)
+	// 获取请求ID
+	requestID, exists := c.Get("request_id")
+	requestIDStr := ""
+	if exists {
+		requestIDStr = requestID.(string)
+	}
+
+	// 使用带请求ID的日志记录
+	var logger *logrus.Entry
+	if requestIDStr != "" {
+		logger = mylog.WithRequestID(requestIDStr)
+	} else {
+		logger = mylog.Log.WithFields(logrus.Fields{})
+	}
+
+	// 记录响应信息
+	logger.WithField("status_code", Code).
+		WithField("message", Msg).
+		Info("响应结果")
+
+	// 返回响应
 	c.JSON(http.StatusOK, Response{
-		Code,
-		data,
-		Msg,
+		Code:      Code,
+		Data:      data,
+		Msg:       Msg,
+		RequestID: requestIDStr,
 	})
-	return
 }
 
 func Ok(c *gin.Context) {

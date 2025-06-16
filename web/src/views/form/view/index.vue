@@ -79,7 +79,7 @@
                 <el-radio 
                   v-for="option in item.options"
                   :key="option.value"
-                  :label="option.value"
+                  :value="option.value"
                 >
                   {{ option.label }}
                 </el-radio>
@@ -99,7 +99,7 @@
                 <el-checkbox 
                   v-for="option in item.options"
                   :key="option.value"
-                  :label="option.value"
+                  :value="option.value"
                 >
                   {{ option.label }}
                 </el-checkbox>

@@ -35,5 +35,5 @@ func (s *ShopGoodsImage) TableName() string {
 
 // Query 获取查询器
 func (s *ShopGoodsImage) Query() *gorm.DB {
-	return db.DB.WnAdmin.Model(s)
+	return db.WnAdmin().Model(s)
 }

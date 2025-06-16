@@ -11,7 +11,7 @@ import (
 type ShopGoodsTagRel struct {
 	Id         int64     `json:"id" gorm:"column:id;primaryKey;comment:ID"`
 	GoodsId    int64     `json:"goodsId" gorm:"column:goods_id;comment:商品ID"`
-	TagId      int64     `json:"tagId" gorm:"column:tag_id;comment:标签ID"`
+	TagName    string    `json:"tagName" gorm:"column:tag_name;comment:标签名称"`
 	CreateTime time.Time `json:"createTime" gorm:"column:create_time;autoCreateTime;comment:创建时间"`
 }
 
@@ -22,5 +22,5 @@ func (ShopGoodsTagRel) TableName() string {
 
 // Query 获取查询构建器
 func (g *ShopGoodsTagRel) Query() *gorm.DB {
-	return db.DB.WnAdmin.Model(g)
+	return db.WnAdmin().Model(g)
 }

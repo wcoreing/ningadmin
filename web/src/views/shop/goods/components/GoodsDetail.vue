@@ -100,6 +100,7 @@ const editorConfig = {
         .then(res => res.json())
         .then(res => {
           if (res.code === 200) {
+            // res.data 在这里是正确的，因为这是直接的 fetch 响应，不是通过 request.js
             const imageUrl = import.meta.env.VITE_IMG_URL + res.data.url
             console.log('上传成功:', imageUrl)
             // 修改插入图片的方式

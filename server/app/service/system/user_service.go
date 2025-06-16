@@ -14,7 +14,7 @@ import (
 type UserService struct{}
 
 // GetUserList 获取用户列表
-func (s *UserService) GetUserList(query *dto.UserQuery) (*dto.UserListResp, error) {
+func (s *UserService) GetUserList(query *dto.SystemUserQuery) (*dto.SystemUserListResp, error) {
 	var users []SystemDB.UserDO
 	userDO := &SystemDB.UserDO{}
 	db := userDO.Query()
@@ -39,9 +39,9 @@ func (s *UserService) GetUserList(query *dto.UserQuery) (*dto.UserListResp, erro
 	}
 
 	// 构建响应数据
-	resp := &dto.UserListResp{
+	resp := &dto.SystemUserListResp{
 		Total: total,
-		Rows:  make([]dto.UserInfoResp, 0, len(users)),
+		Rows:  make([]dto.SystemUserInfoResp, 0, len(users)),
 	}
 
 	// 获取用户角色
@@ -51,7 +51,7 @@ func (s *UserService) GetUserList(query *dto.UserQuery) (*dto.UserListResp, erro
 			return nil, err
 		}
 
-		resp.Rows = append(resp.Rows, dto.UserInfoResp{
+		resp.Rows = append(resp.Rows, dto.SystemUserInfoResp{
 			ID:          user.ID,
 			UserName:    user.UserName,
 			NickName:    user.NickName,
@@ -71,7 +71,7 @@ func (s *UserService) GetUserList(query *dto.UserQuery) (*dto.UserListResp, erro
 }
 
 // CreateUser 创建用户
-func (s *UserService) CreateUser(req *dto.CreateUserReq, createBy string) error {
+func (s *UserService) CreateUser(req *dto.CreateSystemUserReq, createBy string) error {
 	// 检查用户名是否已存在
 	userDO := &SystemDB.UserDO{}
 	exists, err := userDO.CheckUserNameExists(req.UserName, 0)
@@ -112,7 +112,7 @@ func (s *UserService) CreateUser(req *dto.CreateUserReq, createBy string) error 
 	}
 
 	// 开启事务
-	return db.DB.WnAdmin.Transaction(func(tx *gorm.DB) error {
+	return db.WnAdmin().Transaction(func(tx *gorm.DB) error {
 		// 创建用户
 		if err := user.Create(); err != nil {
 			return err
@@ -128,7 +128,7 @@ func (s *UserService) CreateUser(req *dto.CreateUserReq, createBy string) error 
 }
 
 // UpdateUser 更新用户
-func (s *UserService) UpdateUser(req *dto.UpdateUserReq, updateBy string) error {
+func (s *UserService) UpdateUser(req *dto.UpdateSystemUserReq, updateBy string) error {
 	// 检查用户是否存在
 	user := &SystemDB.UserDO{ID: req.ID}
 	if err := user.First(); err != nil {
@@ -157,7 +157,7 @@ func (s *UserService) UpdateUser(req *dto.UpdateUserReq, updateBy string) error 
 	user.UpdateTime = time.Now()
 
 	// 开启事务
-	return db.DB.WnAdmin.Transaction(func(tx *gorm.DB) error {
+	return db.WnAdmin().Transaction(func(tx *gorm.DB) error {
 		// 更新用户信息
 		if err := user.Update(); err != nil {
 			return err
@@ -179,7 +179,7 @@ func (s *UserService) DeleteUser(id int64) error {
 }
 
 // GetUserInfo 获取用户详情
-func (s *UserService) GetUserInfo(id int64) (*dto.UserInfoResp, error) {
+func (s *UserService) GetUserInfo(id int64) (*dto.SystemUserInfoResp, error) {
 	user := &SystemDB.UserDO{ID: id}
 	if err := user.First(); err != nil {
 		return nil, ErrUserNotFound
@@ -191,7 +191,7 @@ func (s *UserService) GetUserInfo(id int64) (*dto.UserInfoResp, error) {
 		return nil, err
 	}
 
-	return &dto.UserInfoResp{
+	return &dto.SystemUserInfoResp{
 		ID:          user.ID,
 		UserName:    user.UserName,
 		NickName:    user.NickName,

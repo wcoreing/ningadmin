@@ -19,7 +19,7 @@ import { ref, onMounted } from 'vue'
 import FileManager from '@/components/FileManager/index.vue'
 
 const visible = ref(true)
-const uploadUrl = ref(import.meta.env.VITE_API_URL + '/common/upload')
+const uploadUrl = ref((import.meta.env.VITE_API_BASE_URL || '/api') + '/common/upload')
 const pageSize = ref(55)
 const fileManagerRef = ref(null)
 

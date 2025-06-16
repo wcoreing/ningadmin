@@ -4,8 +4,10 @@ import (
 	"errors"
 	"mime/multipart"
 	"path"
+	"strings"
 	"time"
 	"wnadmin/app/common/utils"
+	"wnadmin/app/config"
 	"wnadmin/app/model/do/SystemDB"
 	"wnadmin/app/model/dto/common"
 	"wnadmin/app/provider/db"
@@ -21,26 +23,57 @@ func NewService() *Service {
 
 // Upload 上传文件
 func (s *Service) Upload(file *multipart.FileHeader, categoryId string) (*common.FileVO, error) {
-	// 1. 生成文件存储路径
-	ext := path.Ext(file.Filename)
-	fileName := utils.GenerateUUID() + ext
-	filePath := "uploads/" + fileName
-
-	// 2. 保存文件
-	if err := utils.SaveUploadedFile(file, filePath); err != nil {
-		return nil, err
+	// 1. 验证文件类型
+	if !utils.IsValidFileType(file.Filename) {
+		return nil, errors.New("不支持的文件类型")
 	}
 
-	// 3. 保存文件信息到数据库
+	// 2. 验证文件大小
+	if !utils.IsValidFileSize(file.Size) {
+		return nil, errors.New("文件大小超出限制")
+	}
+
+	var relativePath, actualPath string
+	var storageType string
+
+	// 3. 根据配置选择上传方式
+	if strings.ToLower(config.App.Upload.Type) == "oss" {
+		// OSS上传
+		ossUploader, err := utils.NewOSSUploader()
+		if err != nil {
+			return nil, err
+		}
+		relativePath, err = ossUploader.UploadFile(file)
+		if err != nil {
+			return nil, err
+		}
+		actualPath = strings.TrimPrefix(relativePath, "/") // OSS对象键
+		storageType = "oss"
+	} else {
+		// 本地上传
+		ext := path.Ext(file.Filename)
+		fileName := utils.GenerateUUID() + ext
+		actualPath = "uploads/" + fileName
+		relativePath = "/" + actualPath
+
+		if err := utils.SaveUploadedFile(file, actualPath); err != nil {
+			return nil, err
+		}
+		storageType = "local"
+	}
+
+	// 4. 保存文件信息到数据库
 	now := time.Now()
+
 	fileModel := &SystemDB.File{
 		CategoryId:   utils.StrToInt64(categoryId),
-		Name:         fileName,
+		Name:         path.Base(actualPath),
 		OriginalName: file.Filename,
-		Url:          "/" + filePath,
-		Path:         filePath,
+		Url:          relativePath, // 统一存储相对路径
+		Path:         actualPath,   // 存储实际路径（本地路径或OSS对象键）
 		Size:         file.Size,
 		Type:         file.Header.Get("Content-Type"),
+		StorageType:  storageType, // 存储类型
 		Status:       1,
 		CreateTime:   now,
 		UpdateTime:   now,
@@ -93,8 +126,20 @@ func (s *Service) Delete(id string) error {
 	}
 
 	// 1. 删除物理文件
-	if err := utils.RemoveFile(file.Path); err != nil {
-		return err
+	if file.StorageType == "oss" {
+		// OSS删除
+		ossUploader, err := utils.NewOSSUploader()
+		if err != nil {
+			return err
+		}
+		if err := ossUploader.DeleteFile(file.Url); err != nil {
+			return err
+		}
+	} else {
+		// 本地删除
+		if err := utils.RemoveFile(file.Path); err != nil {
+			return err
+		}
 	}
 
 	// 2. 删除数据库记录
@@ -175,12 +220,15 @@ func (s *Service) GetCategoryTree() ([]map[string]interface{}, error) {
 
 // convertToVO 转换为VO对象
 func (s *Service) convertToVO(file *SystemDB.File) *common.FileVO {
+	// 使用统一的工具方法构建最终的访问URL
+	finalURL := utils.BuildFileURL(file.Url, file.StorageType)
+
 	return &common.FileVO{
 		Id:           file.Id,
 		CategoryId:   file.CategoryId,
 		Name:         file.Name,
 		OriginalName: file.OriginalName,
-		Url:          file.Url,
+		Url:          finalURL,
 		Size:         file.Size,
 		Type:         file.Type,
 		CreateTime:   file.CreateTime.Format("2006-01-02 15:04:05"),
@@ -226,12 +274,12 @@ func buildTree(categories []SystemDB.FileCategory) []common.FileCategoryTreeVO {
 func (s *Service) MoveFiles(req *common.MoveFilesReq) error {
 	// 检查分类是否存在
 	var category SystemDB.FileCategory
-	if err := db.DB.WnAdmin.Where("id = ?", req.CategoryId).First(&category).Error; err != nil {
+	if err := db.WnAdmin().Where("id = ?", req.CategoryId).First(&category).Error; err != nil {
 		return errors.New("分类不存在")
 	}
 
 	// 批量更新文件分类
-	err := db.DB.WnAdmin.Model(&SystemDB.File{}).
+	err := db.WnAdmin().Model(&SystemDB.File{}).
 		Where("id IN ?", req.FileIds).
 		Update("category_id", req.CategoryId).Error
 

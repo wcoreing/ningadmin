@@ -16,7 +16,7 @@ func RegisterShopRoutes(apiGroup *gin.RouterGroup) {
 		{
 			goodsGroup.GET("/list", goodsController.List)
 			goodsGroup.GET("/info/:id", goodsController.GetInfo)
-			goodsGroup.POST("", goodsController.Create)
+			goodsGroup.POST("create", goodsController.Create)
 			goodsGroup.PUT("", goodsController.Update)
 			goodsGroup.DELETE("/:id", goodsController.Delete)
 			goodsGroup.PUT("/status", goodsController.UpdateStatus)
@@ -24,6 +24,15 @@ func RegisterShopRoutes(apiGroup *gin.RouterGroup) {
 			goodsGroup.PUT("/move", goodsController.BatchMove)
 			goodsGroup.PUT("/update", goodsController.Update)
 			goodsGroup.DELETE("/batch", goodsController.BatchDelete)
+
+			// 套餐相关路由
+			comboGroup := goodsGroup.Group("/combo")
+			{
+				comboGroup.GET("/config/:id", goodsController.GetComboConfig)            // 获取套餐配置
+				comboGroup.POST("/calculate", goodsController.CalculateComboPrice)       // 计算套餐价格
+				comboGroup.POST("/validate", goodsController.ValidateComboSelection)     // 验证套餐选择
+				comboGroup.GET("/default/:id", goodsController.GetDefaultComboSelection) // 获取默认套餐选择
+			}
 		}
 
 		// 订单管理
@@ -78,5 +87,19 @@ func RegisterShopRoutes(apiGroup *gin.RouterGroup) {
 			bannerGroup.DELETE("/delete/:id", bannerController.DeleteBanner)    // 删除Banner
 			bannerGroup.PUT("/status/:id", bannerController.ChangeBannerStatus) // 修改Banner状态
 		}
+
+		// 用户反馈管理
+		feedbackController := shop.NewFeedbackController()
+		feedbackGroup := shopGroup.Group("/feedback")
+		{
+			feedbackGroup.GET("/list", feedbackController.List)               // 获取反馈列表
+			feedbackGroup.GET("/:id", feedbackController.GetInfo)             // 获取反馈详情
+			feedbackGroup.POST("", feedbackController.Add)                    // 新增反馈
+			feedbackGroup.PUT("", feedbackController.Update)                  // 更新反馈
+			feedbackGroup.DELETE("/:id", feedbackController.Delete)           // 删除反馈
+			feedbackGroup.POST("/:id/reply", feedbackController.Reply)        // 回复反馈
+			feedbackGroup.PUT("/:id/status", feedbackController.UpdateStatus) // 更新反馈状态
+		}
+
 	}
 }

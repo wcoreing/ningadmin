@@ -7,7 +7,8 @@ export const CONFIG_TYPES = [
   { label: '字符串', value: 'string' },
   { label: '数字', value: 'number' },
   { label: '布尔值', value: 'boolean' },
-  { label: '日期', value: 'date' }
+  { label: '日期', value: 'date' },
+  { label: '图片', value: 'image' }
 ]
 
 // 配置类型标签样式映射
@@ -15,7 +16,8 @@ export const CONFIG_TYPE_TAGS = {
   string: '',
   number: 'success',
   boolean: 'warning',
-  date: 'info'
+  date: 'info',
+  image: 'danger'
 }
 
 // 根据配置类型获取标签类型
@@ -65,8 +67,8 @@ export function formatConfigValue(value, type) {
 
 // 验证配置值格式
 export function validateConfigValue(value, type) {
-  if (value === null || value === undefined) {
-    return false
+  if (value === null || value === undefined || value === '') {
+    return true // 允许空值
   }
   
   switch (type) {
@@ -76,6 +78,8 @@ export function validateConfigValue(value, type) {
       return typeof value === 'boolean' || ['true', 'false'].includes(value.toLowerCase())
     case 'date':
       return !isNaN(Date.parse(value))
+    case 'image':
+      return typeof value === 'string' && value.length > 0
     default:
       return true
   }

@@ -17,6 +17,7 @@ type File struct {
 	Path         string    `json:"path" gorm:"size:500;comment:文件路径"`
 	Size         int64     `json:"size" gorm:"comment:文件大小(字节)"`
 	Type         string    `json:"type" gorm:"size:50;comment:文件类型"`
+	StorageType  string    `json:"storageType" gorm:"size:20;default:local;comment:存储类型(local:本地 oss:阿里云OSS)"`
 	Md5          string    `json:"md5" gorm:"size:32;comment:文件MD5"`
 	Status       int       `json:"status" gorm:"default:1;comment:状态(0:禁用 1:正常)"`
 	CreateBy     string    `json:"createBy" gorm:"size:64;comment:创建者"`
@@ -31,7 +32,7 @@ func (File) TableName() string {
 
 // Query 查询构造器
 func (f *File) Query() *gorm.DB {
-	return db.DB.WnAdmin.Model(f).Where("status = ?", 1)
+	return db.WnAdmin().Model(f).Where("status = ?", 1)
 }
 
 // First 获取第一条记录
@@ -41,17 +42,17 @@ func (f *File) First() error {
 
 // Create 创建记录
 func (f *File) Create() error {
-	return db.DB.WnAdmin.Create(f).Error
+	return db.WnAdmin().Create(f).Error
 }
 
 // Update 更新记录
 func (f *File) Update() error {
-	return db.DB.WnAdmin.Model(f).Updates(f).Error
+	return db.WnAdmin().Model(f).Updates(f).Error
 }
 
 // Delete 删除记录
 func (f *File) Delete() error {
-	return db.DB.WnAdmin.Model(f).Where("id = ?", f.Id).Update("status", 0).Error
+	return db.WnAdmin().Model(f).Where("id = ?", f.Id).Update("status", 0).Error
 }
 
 // FileCategory 文件分类
@@ -74,7 +75,7 @@ func (FileCategory) TableName() string {
 
 // Query 查询构造器
 func (fc *FileCategory) Query() *gorm.DB {
-	return db.DB.WnAdmin.Model(fc).Where("status = ?", 1)
+	return db.WnAdmin().Model(fc).Where("status = ?", 1)
 }
 
 // First 获取第一条记录
@@ -84,15 +85,15 @@ func (fc *FileCategory) First() error {
 
 // Create 创建记录
 func (fc *FileCategory) Create() error {
-	return db.DB.WnAdmin.Create(fc).Error
+	return db.WnAdmin().Create(fc).Error
 }
 
 // Update 更新记录
 func (fc *FileCategory) Update() error {
-	return db.DB.WnAdmin.Model(fc).Updates(fc).Error
+	return db.WnAdmin().Model(fc).Updates(fc).Error
 }
 
 // Delete 删除记录
 func (fc *FileCategory) Delete() error {
-	return db.DB.WnAdmin.Model(fc).Where("id = ?", fc.Id).Update("status", 0).Error
+	return db.WnAdmin().Model(fc).Where("id = ?", fc.Id).Update("status", 0).Error
 }

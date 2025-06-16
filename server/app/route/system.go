@@ -18,6 +18,7 @@ func RegisterSystemRoutes(r *gin.RouterGroup) {
 		configGroup := systemGroup.Group("/config")
 		{
 			configGroup.GET("/list", configController.List)
+			configGroup.GET("/tree", configController.GetTree)
 			configGroup.POST("/add", configController.Add)
 			configGroup.PUT("/update", configController.Update)
 			configGroup.DELETE("/delete/:id", configController.Delete)

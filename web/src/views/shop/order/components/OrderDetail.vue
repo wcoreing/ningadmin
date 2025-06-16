@@ -10,12 +10,20 @@
             {{ getStatusText(order.status) }}
           </el-tag>
         </el-descriptions-item>
+        <el-descriptions-item label="用餐类型">
+          <el-tag size="small" :type="getDiningTypeColor(order.diningType)">
+            {{ getDiningTypeText(order.diningType) }}
+          </el-tag>
+          <span v-if="order.diningType === 'dine_in' && order.tableNo" style="margin-left: 8px;">
+            桌号：{{ order.tableNo }}
+          </span>
+        </el-descriptions-item>
         <el-descriptions-item label="支付方式">
           <el-tag size="small" :type="order.payType ? 'success' : ''">
             {{ getPayTypeText(order.payType) }}
           </el-tag>
         </el-descriptions-item>
-        <el-descriptions-item v-if="order.status === 'shipped'" label="发货时间">
+        <el-descriptions-item v-if="order.status === 'delivered'" label="发货时间">
           {{ order.shipTime }}
         </el-descriptions-item>
         <el-descriptions-item v-if="order.status === 'completed'" label="完成时间">
@@ -30,7 +38,7 @@
         <el-descriptions-item label="收货人">{{ order.receiver.receiver }}</el-descriptions-item>
         <el-descriptions-item label="联系电话">{{ order.receiver.phone }}</el-descriptions-item>
         <el-descriptions-item label="收货地址">{{ order.receiver.address }}</el-descriptions-item>
-        <el-descriptions-item v-if="order.status === 'shipped' || order.status === 'completed'" label="物流信息">
+        <el-descriptions-item v-if="order.status === 'delivered' || order.status === 'completed'" label="物流信息">
           <div class="logistics-detail">
             <div>物流公司：{{ getExpressCompanyName(order.receiver.logisticsCompany) }}</div>
             <div>物流单号：{{ order.receiver.logisticsNo }}</div>
@@ -109,9 +117,9 @@ const props = defineProps({
 // 获取状态类型
 const getStatusType = (status) => {
   const map = {
-    'pending': 'warning',     // 待付款
+    'unpaid': 'warning',      // 待付款
     'unshipped': 'primary',   // 待发货
-    'shipped': 'info',        // 待收货
+    'delivered': 'info',      // 待收货
     'completed': 'success',   // 已完成
     'cancelled': 'danger'     // 已取消
   }
@@ -121,9 +129,9 @@ const getStatusType = (status) => {
 // 获取状态文本
 const getStatusText = (status) => {
   const map = {
-    'pending': '待付款',
+    'unpaid': '待付款',
     'unshipped': '待发货',
-    'shipped': '待收货',
+    'delivered': '待收货',
     'completed': '已完成',
     'cancelled': '已取消'
   }
@@ -138,6 +146,24 @@ const getPayTypeText = (payType) => {
     3: '余额支付'
   }
   return map[payType] || '未支付'
+}
+
+// 获取用餐类型文本
+const getDiningTypeText = (diningType) => {
+  const map = {
+    'dine_in': '堂食',
+    'takeout': '外卖'
+  }
+  return map[diningType] || '外卖'
+}
+
+// 获取用餐类型颜色
+const getDiningTypeColor = (diningType) => {
+  const map = {
+    'dine_in': 'warning',  // 堂食用橙色
+    'takeout': 'success'   // 外卖用绿色
+  }
+  return map[diningType] || 'success'
 }
 
 // 获取物流公司名称

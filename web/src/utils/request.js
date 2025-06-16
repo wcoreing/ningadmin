@@ -36,6 +36,11 @@ request.interceptors.response.use(
       return res.data
     }
     
+    // 如果响应没有code字段，直接返回数据（兼容不同的后端实现）
+    if (res.code === undefined) {
+      return res
+    }
+    
     // 如果是无效令牌,跳转到登录页
     if (res.code === 401) {
       ElMessage.error('登录已过期,请重新登录')

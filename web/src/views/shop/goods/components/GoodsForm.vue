@@ -34,9 +34,8 @@
           <basic-info
             :form-data="formData"
             :category-options="categoryOptions"
-            :brand-options="brandOptions"
-            :supplier-options="supplierOptions"
             :tag-options="tagOptions"
+            @type-change="handleTypeChange"
           />
         </el-tab-pane>
 
@@ -48,10 +47,78 @@
         <!-- 规格设置 Tab -->
         <el-tab-pane label="规格设置" name="specs">
           <template #label>规格设置</template>
+          
+          <!-- 规格类型选择器 - 始终显示 -->
+          <div class="spec-type-card">
+            <div class="spec-type-selector">
+              <div 
+                class="spec-type-option"
+                :class="{ active: formData.specType === 1 }"
+                @click="handleSpecTypeChange(1)"
+              >
+                <div class="option-icon">
+                  <el-icon><Document /></el-icon>
+                </div>
+                <div class="option-content">
+                  <h4>单规格</h4>
+                  <p>商品只有一种规格，统一价格和库存</p>
+                </div>
+                <div class="option-check">
+                  <el-icon v-if="formData.specType === 1"><Check /></el-icon>
+                </div>
+              </div>
+              
+              <div 
+                class="spec-type-option"
+                :class="{ active: formData.specType === 2 }"
+                @click="handleSpecTypeChange(2)"
+              >
+                <div class="option-icon">
+                  <el-icon><Grid /></el-icon>
+                </div>
+                <div class="option-content">
+                  <h4>多规格</h4>
+                  <p>商品有多种规格组合，如颜色、尺寸等</p>
+                </div>
+                <div class="option-check">
+                  <el-icon v-if="formData.specType === 2"><Check /></el-icon>
+                </div>
+              </div>
+              
+              <div 
+                class="spec-type-option"
+                :class="{ active: formData.specType === 3 }"
+                @click="handleSpecTypeChange(3)"
+              >
+                <div class="option-icon">
+                  <el-icon><SetUp /></el-icon>
+                </div>
+                <div class="option-content">
+                  <h4>套餐规格</h4>
+                  <p>商品为套餐形式，包含多个组和选项</p>
+                </div>
+                <div class="option-check">
+                  <el-icon v-if="formData.specType === 3"><Check /></el-icon>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 单规格和多规格设置 -->
           <SpecSettings 
+            v-if="formData.specType === 1 || formData.specType === 2"
             :form-data="formData"
             :upload-url="uploadUrl"
             ref="specSettingsRef"
+            @spec-type-change="handleSpecTypeChange"
+            :show-type-selector="false"
+          />
+          
+          <!-- 套餐规格设置 -->
+          <combo-settings 
+            v-if="formData.specType === 3"
+            :form-data="formData"
+            ref="comboSettingsRef"
           />
         </el-tab-pane>
 
@@ -68,13 +135,14 @@
 import { ref, defineProps, defineEmits, watch, computed, shallowRef, onBeforeUnmount, nextTick, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { updateGoods, createGoods, getGoodsInfo } from '@/api/shop/goods'
-import { Plus, Rank, Delete, Search, UploadFilled, Close } from '@element-plus/icons-vue'
+import { Plus, Rank, Delete, Search, UploadFilled, Close, Document, Grid, SetUp, Check } from '@element-plus/icons-vue'
 import '@wangeditor/editor/dist/css/style.css'
 import { Editor, Toolbar } from '@wangeditor/editor-for-vue'
 import FileManager from '@/components/FileManager/index.vue'
 import BasicInfo from './BasicInfo.vue'
 import GoodsImages from './GoodsImages.vue'
 import SpecSettings from './SpecSettings.vue'
+import ComboSettings from './ComboSettings.vue'
 import GoodsDetail from './GoodsDetail.vue'
 
 const props = defineProps({
@@ -94,14 +162,6 @@ const props = defineProps({
     type: Array,
     default: () => []
   },
-  brandOptions: {
-    type: Array,
-    default: () => []
-  },
-  supplierOptions: {
-    type: Array,
-    default: () => []
-  },
   tagOptions: {
     type: Array,
     default: () => []
@@ -116,30 +176,52 @@ const emit = defineEmits(['update:visible', 'success', 'close'])
 
 const formRef = ref(null)
 const activeTab = ref('basic')
+const comboSettingsRef = ref(null)
 
 const formData = ref({
   goodsId: undefined,
   goodsName: '',
   categoryId: undefined,
-  brandId: undefined,
-  supplierId: undefined,
-  price: 0,
-  originalPrice: 0,
-  stock: 0,
+  brand: '',
+  supplier: '',
+        type: 1, // 商品类型：1-普通商品，2-虚拟商品
+  // 删除通用字段，每种规格使用自己对象中的字段
   sort: 0,
   status: 0,
   description: '',
   coverImg: '',
-  tagIds: [],
+  tagNames: [],
   images: [],
   specType: 1,
   specGroups: [],
   skuList: [],
-  detailDesc: ''
+  comboGroups: [], // 套餐组配置
+  detailDesc: '',
+  
+  // 多规格数据存储 - 支持同时保存多种规格类型的数据
+  allSpecData: {
+    singleSpecData: {
+      price: 0,
+      originalPrice: 0,
+      costPrice: 0,
+      stock: 0,
+      weight: 0,
+      volume: 0
+    },
+    multiSpecData: {
+      specGroups: [],
+      skuList: []
+    },
+    comboSpecData: {
+      price: 0,
+      comboGroups: []
+    }
+  }
 })
 
-// 表单验证规则
-const formRules = {
+// 动态表单验证规则
+const formRules = computed(() => {
+  const baseRules = {
   goodsName: [
     { required: true, message: '请输入商品名称', trigger: 'blur' },
     { min: 2, max: 50, message: '长度在 2 到 50 个字符', trigger: 'blur' }
@@ -147,27 +229,26 @@ const formRules = {
   categoryId: [
     { required: true, message: '请选择商品分类', trigger: 'change' }
   ],
-  brandId: [
+    brand: [
     { required: true, message: '请选择商品品牌', trigger: 'change' }
   ],
-  supplierId: [
-    { required: true, message: '请选择供应商', trigger: 'change' }
-  ],
-  price: [
-    { required: true, message: '请输入商品价格', trigger: 'blur' }
-  ],
-  stock: [
-    { required: true, message: '请输入商品库存', trigger: 'blur' }
-  ]
-}
+    supplier: [
+      { required: true, message: '请输入供应商名称', trigger: 'blur' }
+    ]
+  }
 
-// 添加 tab 验证规则映射
-const tabRules = {
-  basic: ['goodsName', 'categoryId', 'brandId', 'supplierId', 'price', 'stock'],
-  specs: [], // 规格相关的验证
+  return baseRules
+})
+
+// 更新 tab 验证规则映射
+const tabRules = computed(() => {
+  return {
+    basic: ['goodsName', 'categoryId', 'brand', 'supplier'],
+    specs: [], // 规格相关的验证在提交时单独处理
   images: [], // 图片相关的验证
   detail: [] // 详情相关的验证
 }
+})
 
 // 编辑器实例
 const editorRef = shallowRef(null)
@@ -205,25 +286,50 @@ const loadGoodsDetail = async (id) => {
       goodsId: undefined,
       goodsName: '',
       categoryId: undefined,
-      brandId: undefined,
-      supplierId: undefined,
-      price: 0,
+      brand: '',
+      supplier: '',
+      type: 1,
+      // 删除通用price字段，每种规格使用自己的价格
       originalPrice: 0,
+      costPrice: 0,
       stock: 0,
+      weight: 0,
+      volume: 0,
       sort: 0,
       status: 0,
       description: '',
       coverImg: '',
-      tagIds: [],
+      tagNames: [],
       images: [],
       specType: 1,
       specGroups: [],
       skuList: [],
-      detailDesc: ''
+      comboGroups: [],
+      detailDesc: '',
+      allSpecData: {
+        singleSpecData: {
+          price: 0,
+          originalPrice: 0,
+          costPrice: 0,
+          stock: 0,
+          weight: 0,
+          volume: 0
+        },
+        multiSpecData: {
+          specGroups: [],
+          skuList: []
+        },
+        comboSpecData: {
+          price: 0,
+          comboGroups: []
+        }
+      }
     }
 
     // 等待下一个 tick，确保重置完成
     await nextTick()
+    
+    // 删除通用字段的提取，数据直接存储在各自规格对象中
     
     // 然后设置新数据
     formData.value = {
@@ -231,22 +337,32 @@ const loadGoodsDetail = async (id) => {
       goodsId: data.goodsId,
       goodsName: data.goodsName,
       categoryId: data.categoryId,
-      brandId: data.brandId,
-      supplierId: data.supplierId,
-      price: data.price,
-      originalPrice: data.originalPrice,
-      stock: data.stock,
+      brand: data.brand || '',
+      supplier: data.supplier || '',
+      type: data.type || 1, // 商品类型
+      // 删除通用字段，每种规格使用自己对象中的字段
       sort: data.sort,
       status: Number(data.status),
       description: data.description,
       coverImg: data.coverImg,
-      tagIds: data.tagIds || [],
+      tagNames: data.tagNames || [],
       images: data.images || [],
       specType: data.specType || 1,
-      specGroups: data.specGroups ? JSON.parse(JSON.stringify(data.specGroups)) : [],
-      skuList: data.skuList ? JSON.parse(JSON.stringify(data.skuList)) : [],
-      detailDesc: data.detailDesc || '<p><br></p>'
+      specGroups: data.multiSpecData?.specGroups ? JSON.parse(JSON.stringify(data.multiSpecData.specGroups)) : [],
+      skuList: data.multiSpecData?.skuList ? JSON.parse(JSON.stringify(data.multiSpecData.skuList)) : [],
+      comboGroups: data.comboSpecData?.comboGroups ? JSON.parse(JSON.stringify(data.comboSpecData.comboGroups)) : [], // 套餐组数据
+      detailDesc: data.detailDesc || '<p><br></p>',
+      
+      // 加载多规格数据存储
+      allSpecData: {
+        singleSpecData: data.singleSpecData || null,
+        multiSpecData: data.multiSpecData || null,
+        comboSpecData: data.comboSpecData || null
+      }
     }
+    
+    console.log('GoodsForm - 设置套餐组数据:', formData.value.comboGroups)
+    console.log('GoodsForm - 原始数据:', data.comboGroups)
 
    
     
@@ -279,11 +395,10 @@ watch(
           goodsId: undefined,
           goodsName: '',
           categoryId: undefined,
-          brandId: undefined,
-          supplierId: undefined,
-          price: 0,
-          originalPrice: 0,
-          stock: 0,
+          brand: '',
+          supplier: '',
+          type: 1,
+          // 删除通用字段，每种规格使用自己对象中的字段
           sort: 0,
           status: 0,
           description: '',
@@ -293,7 +408,26 @@ watch(
           specType: 1,
           specGroups: [],
           skuList: [],
-          detailDesc: '<p><br></p>'
+          comboGroups: [],
+          detailDesc: '<p><br></p>',
+          allSpecData: {
+            singleSpecData: {
+              price: 0,
+              originalPrice: 0,
+              costPrice: 0,
+              stock: 0,
+              weight: 0,
+              volume: 0
+            },
+            multiSpecData: {
+              specGroups: [],
+              skuList: []
+            },
+            comboSpecData: {
+              price: 0,
+              comboGroups: []
+            }
+          }
         }
         formRef.value?.resetFields()
       }
@@ -316,6 +450,15 @@ const updateVisible = (value) => {
 // 修改 activeTab 的处理
 const handleTabChange = (tabName) => {
   activeTab.value = tabName
+  
+  // 如果切换到规格设置Tab且是套餐规格，确保套餐组已初始化
+  if (tabName === 'specs' && formData.value.specType === 3) {
+    nextTick(() => {
+      if (!formData.value.comboGroups || formData.value.comboGroups.length === 0) {
+        comboSettingsRef.value?.initComboGroups?.()
+      }
+    })
+  }
 }
 
 // 添加一个用于刷新商品详情组件的 key
@@ -324,21 +467,167 @@ const detailKey = ref(0)
 // 修改提交表单方法
 const handleSubmit = async () => {
   try {
+    // 基础表单验证
     await formRef.value.validate()
     
-    // 处理 SKU 数据
+    // 套餐规格验证
+    if (formData.value.specType === 3) {
+      // 验证套餐价格
+      const comboPrice = formData.value.allSpecData?.comboSpecData?.price
+      if (comboPrice === undefined || comboPrice < 0) {
+        ElMessage.error('请设置套餐价格，价格必须大于等于0')
+        activeTab.value = 'specs'
+        return
+      }
+      
+      // 验证套餐组
+      if (!formData.value.comboGroups || formData.value.comboGroups.length === 0) {
+        ElMessage.error('套餐规格必须设置套餐组')
+        activeTab.value = 'specs'
+        return
+      }
+      
+      // 验证套餐组是否完整
+      const hasValidGroups = formData.value.comboGroups.some(group => 
+        group.name && group.options && group.options.length > 0
+      )
+      if (!hasValidGroups) {
+        ElMessage.error('请完善套餐组设置，至少需要一个完整的套餐组')
+        activeTab.value = 'specs'
+        return
+      }
+      
+      // 验证每个套餐组的选项
+      for (const group of formData.value.comboGroups) {
+        if (!group.name) {
+          ElMessage.error('请为所有套餐组设置名称')
+          activeTab.value = 'specs'
+          return
+        }
+        
+        if (!group.options || group.options.length === 0) {
+          ElMessage.error(`套餐组"${group.name}"必须至少有一个选项`)
+          activeTab.value = 'specs'
+          return
+        }
+        
+        // 验证必选组是否有默认选项
+        if (group.isRequired) {
+          const hasDefault = group.options.some(option => option.isDefault)
+          if (!hasDefault) {
+            ElMessage.error(`必选套餐组"${group.name}"必须至少有一个默认选项`)
+            activeTab.value = 'specs'
+            return
+          }
+        }
+        
+        // 验证选项的完整性
+        for (const option of group.options) {
+          if (!option.name || !option.value) {
+            ElMessage.error(`套餐组"${group.name}"中有选项名称或值为空`)
+            activeTab.value = 'specs'
+            return
+          }
+          
+          if (option.addPrice < 0 || !Number.isFinite(Number(option.addPrice))) {
+            ElMessage.error(`套餐组"${group.name}"中的选项"${option.name}"加价金额设置错误`)
+            activeTab.value = 'specs'
+            return
+          }
+          
+          if (option.quantity <= 0 || !Number.isInteger(Number(option.quantity))) {
+            ElMessage.error(`套餐组"${group.name}"中的选项"${option.name}"数量必须为正整数`)
+            activeTab.value = 'specs'
+            return
+          }
+        }
+      }
+    }
+    
+    // 单规格商品验证
+    else if (formData.value.specType === 1) {
+      // 验证价格 - 从allSpecData.singleSpecData中获取
+      const singleSpecPrice = formData.value.allSpecData?.singleSpecData?.price
+      if (!singleSpecPrice || singleSpecPrice <= 0) {
+        ElMessage.error('请在规格设置页面设置商品价格，价格必须大于0')
+        activeTab.value = 'specs'
+        return
+      }
+      // 验证库存 - 从allSpecData.singleSpecData中获取
+      const singleSpecStock = formData.value.allSpecData?.singleSpecData?.stock
+      if (singleSpecStock < 0 || !Number.isInteger(Number(singleSpecStock))) {
+        ElMessage.error('请在规格设置页面设置商品库存，库存必须为非负整数')
+        activeTab.value = 'specs'
+        return
+      }
+    }
+    
+    // 多规格商品的额外验证
     if (formData.value.specType === 2) {
+      // 验证是否有规格组
+      if (!formData.value.specGroups || formData.value.specGroups.length === 0) {
+        ElMessage.error('多规格商品必须设置规格组')
+        activeTab.value = 'specs'
+        return
+      }
+
+      // 验证规格组是否完整
+      const hasValidGroups = formData.value.specGroups.some(group => 
+        group.name && group.values && group.values.length > 0
+      )
+      if (!hasValidGroups) {
+        ElMessage.error('请完善规格组设置，至少需要一个完整的规格组')
+        activeTab.value = 'specs'
+        return
+      }
+
+      // 验证SKU列表
+      if (!formData.value.skuList || formData.value.skuList.length === 0) {
+        ElMessage.error('多规格商品必须有SKU数据')
+        activeTab.value = 'specs'
+        return
+      }
+
+      // 验证每个SKU的价格和库存
+      const invalidSku = formData.value.skuList.find(sku => 
+        !sku.price || sku.price < 0 || !Number.isFinite(Number(sku.price)) ||
+        sku.stock < 0 || !Number.isInteger(Number(sku.stock)) ||
+        (sku.originalPrice && (sku.originalPrice < 0 || !Number.isFinite(Number(sku.originalPrice)))) ||
+        (sku.costPrice && (sku.costPrice < 0 || !Number.isFinite(Number(sku.costPrice)))) ||
+        (sku.weight && (sku.weight < 0 || !Number.isFinite(Number(sku.weight)))) ||
+        (sku.volume && (sku.volume < 0 || !Number.isFinite(Number(sku.volume))))
+      )
+      if (invalidSku) {
+        ElMessage.error('请检查SKU的价格、库存等设置，价格必须大于0，库存必须为非负整数，其他数值字段必须为非负数')
+        activeTab.value = 'specs'
+        return
+      }
+
+      // 处理 SKU 数据格式
       formData.value.skuList = formData.value.skuList.map(sku => ({
         specs: sku.specs,
         price: Number(sku.price || 0),
+        originalPrice: Number(sku.originalPrice || 0),
+        costPrice: Number(sku.costPrice || 0),
         stock: Number(sku.stock || 0),
+        weight: Number(sku.weight || 0),
+        volume: Number(sku.volume || 0),
         image: sku.image || ''
       }))
     }
 
+    // 在提交前，保存当前规格类型的数据到allSpecData
+    saveCurrentSpecData()
+
     const submitData = {
-      ...formData.value
+      ...formData.value,
+      // 确保包含所有规格类型的数据
+      singleSpecData: formData.value.allSpecData.singleSpecData,
+      multiSpecData: formData.value.allSpecData.multiSpecData,
+      comboSpecData: formData.value.allSpecData.comboSpecData
     }
+    
+    console.log('GoodsForm - 提交数据:', submitData)
 
     if (props.type === 'add') {
       await createGoods(submitData)
@@ -353,7 +642,11 @@ const handleSubmit = async () => {
     detailKey.value++
   } catch (error) {
     console.error('提交失败:', error)
+    if (error.message) {
+      ElMessage.error(error.message)
+    } else {
     ElMessage.error('提交失败，请检查表单')
+    }
   }
 }
 
@@ -565,6 +858,118 @@ const openFileManager = (type) => {
   fileManagerVisible.value = true
 }
 
+// 商品类型变化处理
+const handleTypeChange = (type) => {
+  formData.value.type = type
+}
+
+// 规格类型变化处理 - 支持多规格数据同时存储
+const handleSpecTypeChange = (specType) => {
+  console.log('GoodsForm - 规格类型变化:', formData.value.specType, '->', specType)
+  
+  // 在切换前，保存当前规格类型的数据
+  saveCurrentSpecData()
+  
+  // 切换规格类型
+  const oldSpecType = formData.value.specType
+  formData.value.specType = specType
+  
+  // 加载新规格类型的数据
+  loadSpecDataByType(specType)
+  
+  // 如果切换到套餐规格且没有套餐组数据，初始化套餐组
+  if (specType === 3 && (!formData.value.comboGroups || formData.value.comboGroups.length === 0)) {
+      nextTick(() => {
+        comboSettingsRef.value?.initComboGroups?.()
+      })
+    }
+  
+  console.log('GoodsForm - 规格类型切换完成:', oldSpecType, '->', specType)
+  console.log('GoodsForm - 当前所有规格数据:', formData.value.allSpecData)
+}
+
+// 保存当前规格类型的数据
+const saveCurrentSpecData = () => {
+  const currentSpecType = formData.value.specType
+  
+  switch (currentSpecType) {
+    case 1: // 单规格
+      // 单规格数据已经直接存储在allSpecData.singleSpecData中，无需额外保存
+      break
+      
+    case 2: // 多规格
+      formData.value.allSpecData.multiSpecData = {
+        specGroups: JSON.parse(JSON.stringify(formData.value.specGroups || [])),
+        skuList: JSON.parse(JSON.stringify(formData.value.skuList || []))
+      }
+      break
+      
+    case 3: // 套餐规格
+      // 套餐规格数据已经直接存储在allSpecData.comboSpecData中，无需额外保存
+      formData.value.allSpecData.comboSpecData = {
+        ...formData.value.allSpecData.comboSpecData,
+        comboGroups: JSON.parse(JSON.stringify(formData.value.comboGroups || []))
+      }
+      break
+  }
+  
+  console.log('GoodsForm - 保存规格数据:', currentSpecType, formData.value.allSpecData)
+}
+
+// 加载指定规格类型的数据（三种规格类型数据完全独立，不相互干扰）
+const loadSpecDataByType = (specType) => {
+  switch (specType) {
+    case 1: // 单规格
+      // 单规格数据直接存储在allSpecData.singleSpecData中，无需加载到formData
+      // 清空当前规格类型不需要的显示数据
+      formData.value.specGroups = []
+      formData.value.skuList = []
+      formData.value.comboGroups = []
+      break
+      
+    case 2: // 多规格
+      if (formData.value.allSpecData.multiSpecData) {
+        const data = formData.value.allSpecData.multiSpecData
+        formData.value.specGroups = JSON.parse(JSON.stringify(data.specGroups || []))
+        formData.value.skuList = JSON.parse(JSON.stringify(data.skuList || []))
+      } else {
+        // 如果没有保存的数据，使用默认值
+        formData.value.specGroups = []
+        formData.value.skuList = []
+      }
+      // 多规格数据直接存储在allSpecData.multiSpecData中
+      formData.value.comboGroups = []
+      break
+      
+    case 3: // 套餐规格
+      console.log('GoodsForm - 套餐规格数据检查:', formData.value.allSpecData.comboSpecData)
+      if (formData.value.allSpecData.comboSpecData) {
+        const data = formData.value.allSpecData.comboSpecData
+        console.log('GoodsForm - 套餐规格数据存在:', data)
+        console.log('GoodsForm - 套餐价格:', data.price)
+        formData.value.comboGroups = JSON.parse(JSON.stringify(data.comboGroups || []))
+      } else {
+        // 如果没有保存的数据，使用默认值
+        console.log('GoodsForm - 套餐规格数据不存在，使用默认值')
+        formData.value.comboGroups = []
+        // 初始化comboSpecData结构
+        if (!formData.value.allSpecData.comboSpecData) {
+          formData.value.allSpecData.comboSpecData = { price: 0, comboGroups: [] }
+        }
+      }
+      // 套餐规格数据直接存储在allSpecData.comboSpecData中，清空其他规格数据
+      formData.value.specGroups = []
+      formData.value.skuList = []
+      break
+  }
+  
+  console.log('GoodsForm - 加载规格数据:', specType, {
+    specGroups: formData.value.specGroups,
+    comboGroups: formData.value.comboGroups,
+    allSpecData: formData.value.allSpecData
+  })
+}
+
 // 添加 handleClose 方法
 const handleClose = () => {
   // 重置表单数据
@@ -572,21 +977,40 @@ const handleClose = () => {
     goodsId: undefined,
     goodsName: '',
     categoryId: undefined,
-    brandId: undefined,
-    supplierId: undefined,
-    price: 0,
-    originalPrice: 0,
-    stock: 0,
+    brand: '',
+    supplier: '',
+    type: 1,
+    // 删除通用字段，每种规格使用自己对象中的字段
     sort: 0,
     status: 0,
     description: '',
     coverImg: '',
-    tagIds: [],
+    tagNames: [],
     images: [],
     specType: 1,
     specGroups: [],
     skuList: [],
-    detailDesc: ''
+    comboGroups: [],
+    detailDesc: '',
+    // 初始化三种规格类型的数据结构
+    allSpecData: {
+      singleSpecData: {
+        price: 0,
+        originalPrice: 0,
+        costPrice: 0,
+        stock: 0,
+        weight: 0,
+        volume: 0
+      },
+      multiSpecData: {
+        specGroups: [],
+        skuList: []
+      },
+      comboSpecData: {
+        price: 0,
+        comboGroups: []
+      }
+    }
   }
   
   // 重置表单验证
@@ -610,6 +1034,8 @@ const handleClose = () => {
 :deep(.el-tree-select) {
   width: 100%;
 }
+
+
 
 .spec-container {
   padding: 20px;
@@ -778,5 +1204,73 @@ const handleClose = () => {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.spec-type-card {
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid #e4e7ed;
+  margin-bottom: 20px;
+  overflow: hidden;
+  
+  .spec-type-selector {
+    padding: 24px;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+    
+    .spec-type-option {
+      display: flex;
+      align-items: center;
+      padding: 20px;
+      border: 2px solid #e4e7ed;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      background: #fafbfc;
+      
+      &:hover {
+        border-color: #409eff;
+        background: #f0f9ff;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(64, 158, 255, 0.15);
+      }
+      
+      &.active {
+        border-color: #409eff;
+        background: #f0f9ff;
+        box-shadow: 0 0 0 3px rgba(64, 158, 255, 0.1);
+      }
+      
+      .option-icon {
+        margin-right: 16px;
+        font-size: 24px;
+        color: #409eff;
+      }
+      
+      .option-content {
+        flex: 1;
+        
+        h4 {
+          margin: 0 0 4px 0;
+          font-size: 16px;
+          font-weight: 600;
+          color: #303133;
+        }
+        
+        p {
+          margin: 0;
+          font-size: 14px;
+          color: #606266;
+          line-height: 1.4;
+        }
+      }
+      
+      .option-check {
+        font-size: 20px;
+        color: #67c23a;
+      }
+    }
+  }
 }
 </style> 

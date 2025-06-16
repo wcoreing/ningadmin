@@ -34,7 +34,7 @@ func NewUserController() *UserController {
 // @Success 200 {object} response.Response "成功"
 // @Router /system/user/list [get]
 func (c *UserController) List(ctx *gin.Context) {
-	var query dto.UserQuery
+	var query dto.SystemUserQuery
 	if err := ctx.ShouldBindQuery(&query); err != nil {
 		response.FailWithMessage(201, "参数错误: "+err.Error(), ctx)
 		return
@@ -70,7 +70,7 @@ func (c *UserController) List(ctx *gin.Context) {
 // @Success 200 {object} response.Response "成功"
 // @Router /system/user [post]
 func (c *UserController) Add(ctx *gin.Context) {
-	var req dto.CreateUserReq
+	var req dto.CreateSystemUserReq
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		response.FailWithMessage(201, "参数错误: "+err.Error(), ctx)
 		return
@@ -96,7 +96,7 @@ func (c *UserController) Add(ctx *gin.Context) {
 // @Success 200 {object} response.Response "成功"
 // @Router /system/user [put]
 func (c *UserController) Update(ctx *gin.Context) {
-	var req dto.UpdateUserReq
+	var req dto.UpdateSystemUserReq
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		response.FailWithMessage(201, "参数错误: "+err.Error(), ctx)
 		return
@@ -179,7 +179,13 @@ func (c *UserController) UpdateStatus(ctx *gin.Context) {
 		return
 	}
 
-	if err := c.userService.UpdateUserStatus(req.UserID, req.Status); err != nil {
+	// 转换状态类型：int -> string
+	status := "0"
+	if *req.Status == 1 {
+		status = "1"
+	}
+
+	if err := c.userService.UpdateUserStatus(req.ID, status); err != nil {
 		response.FailWithMessage(201, "更新用户状态失败: "+err.Error(), ctx)
 		return
 	}
@@ -203,7 +209,7 @@ func (c *UserController) ResetPassword(ctx *gin.Context) {
 		return
 	}
 
-	if err := c.userService.UpdateUserPassword(req.UserID, req.Password); err != nil {
+	if err := c.userService.UpdateUserPassword(req.ID, req.Password); err != nil {
 		response.FailWithMessage(201, "重置密码失败: "+err.Error(), ctx)
 		return
 	}

@@ -2,28 +2,28 @@ package shop
 
 import (
 	"errors"
-	shop_do "wnadmin/app/model/do/shop"
+	"wnadmin/app/model/do/shop"
 	shop_dto "wnadmin/app/model/dto/shop"
 	"wnadmin/app/provider/db"
 )
 
 // CategoryService 商品分类服务
 type CategoryService struct {
-	shopCategory *shop_do.ShopCategory
+	category *shop.Category
 }
 
 func NewCategoryService() *CategoryService {
 	return &CategoryService{
-		shopCategory: &shop_do.ShopCategory{},
+		category: &shop.Category{},
 	}
 }
 
 // GetList 获取分类列表(树形结构)
 func (s *CategoryService) GetList(req *shop_dto.CategoryListReq) ([]shop_dto.CategoryVO, error) {
-	var categories []shop_do.ShopCategory
+	var categories []shop.Category
 
 	// 构建查询条件
-	query := db.DB.WnAdmin.Model(&shop_do.ShopCategory{}).Where("is_delete = ?", 0)
+	query := db.WnAdmin().Model(&shop.Category{}).Where("is_delete = ? AND module = ?", 0, "goods")
 	if req.Name != "" {
 		query = query.Where("name LIKE ?", "%"+req.Name+"%")
 	}
@@ -47,8 +47,8 @@ func (s *CategoryService) GetList(req *shop_dto.CategoryListReq) ([]shop_dto.Cat
 func (s *CategoryService) Create(req *shop_dto.CategoryCreateReq) error {
 	// 检查父级分类
 	if req.ParentId > 0 {
-		var parent shop_do.ShopCategory
-		if err := db.DB.WnAdmin.First(&parent, req.ParentId).Error; err != nil {
+		var parent shop.Category
+		if err := db.WnAdmin().Where("module = ?", "goods").First(&parent, req.ParentId).Error; err != nil {
 			return errors.New("父级分类不存在")
 		}
 		if parent.Level >= 3 {
@@ -57,7 +57,7 @@ func (s *CategoryService) Create(req *shop_dto.CategoryCreateReq) error {
 	}
 
 	// 创建分类
-	category := &shop_do.ShopCategory{
+	category := &shop.Category{
 		ParentId: req.ParentId,
 		Name:     req.Name,
 		Icon:     req.Icon,
@@ -65,22 +65,23 @@ func (s *CategoryService) Create(req *shop_dto.CategoryCreateReq) error {
 		Level:    s.getLevel(req.ParentId),
 		Sort:     req.Sort,
 		Status:   req.Status,
+		Module:   "goods", // 商品分类
 	}
 
-	return db.DB.WnAdmin.Create(category).Error
+	return db.WnAdmin().Create(category).Error
 }
 
 // Update 更新分类
 func (s *CategoryService) Update(req *shop_dto.CategoryUpdateReq) error {
-	var category shop_do.ShopCategory
-	if err := db.DB.WnAdmin.First(&category, req.Id).Error; err != nil {
+	var category shop.Category
+	if err := db.WnAdmin().Where("module = ?", "goods").First(&category, req.Id).Error; err != nil {
 		return errors.New("分类不存在")
 	}
 
 	// 检查父级分类
 	if req.ParentId > 0 && req.ParentId != category.ParentId {
-		var parent shop_do.ShopCategory
-		if err := db.DB.WnAdmin.First(&parent, req.ParentId).Error; err != nil {
+		var parent shop.Category
+		if err := db.WnAdmin().Where("module = ?", "goods").First(&parent, req.ParentId).Error; err != nil {
 			return errors.New("父级分类不存在")
 		}
 		if parent.Level >= 3 {
@@ -96,14 +97,14 @@ func (s *CategoryService) Update(req *shop_dto.CategoryUpdateReq) error {
 	category.Sort = req.Sort
 	category.Status = req.Status
 
-	return db.DB.WnAdmin.Save(&category).Error
+	return db.WnAdmin().Save(&category).Error
 }
 
 // Delete 删除分类
 func (s *CategoryService) Delete(id int64) error {
 	// 检查是否有子分类
 	var count int64
-	if err := db.DB.WnAdmin.Model(&shop_do.ShopCategory{}).Where("parent_id = ? AND is_delete = ?", id, 0).Count(&count).Error; err != nil {
+	if err := db.WnAdmin().Model(&shop.Category{}).Where("parent_id = ? AND is_delete = ? AND module = ?", id, 0, "goods").Count(&count).Error; err != nil {
 		return err
 	}
 	if count > 0 {
@@ -111,18 +112,18 @@ func (s *CategoryService) Delete(id int64) error {
 	}
 
 	// 检查是否有关联商品
-	if err := db.DB.WnAdmin.Model(&shop_do.GoodsDO{}).Where("category_id = ? AND is_delete = ?", id, 0).Count(&count).Error; err != nil {
+	if err := db.WnAdmin().Model(&shop.GoodsDO{}).Where("category_id = ? AND is_delete = ?", id, 0).Count(&count).Error; err != nil {
 		return err
 	}
 	if count > 0 {
 		return errors.New("该分类下有商品，无法删除")
 	}
 
-	return db.DB.WnAdmin.Model(&shop_do.ShopCategory{}).Where("id = ?", id).Update("is_delete", 1).Error
+	return db.WnAdmin().Model(&shop.Category{}).Where("id = ? AND module = ?", id, "goods").Update("is_delete", 1).Error
 }
 
 // 构建树形结构
-func (s *CategoryService) buildTree(categories []shop_do.ShopCategory, parentId int64) []shop_dto.CategoryVO {
+func (s *CategoryService) buildTree(categories []shop.Category, parentId int64) []shop_dto.CategoryVO {
 	var result []shop_dto.CategoryVO
 	for _, category := range categories {
 		if category.ParentId == parentId {
@@ -150,8 +151,8 @@ func (s *CategoryService) getLevel(parentId int64) int {
 	if parentId == 0 {
 		return 1
 	}
-	var parent shop_do.ShopCategory
-	if err := db.DB.WnAdmin.First(&parent, parentId).Error; err != nil {
+	var parent shop.Category
+	if err := db.WnAdmin().Where("module = ?", "goods").First(&parent, parentId).Error; err != nil {
 		return 1
 	}
 	return parent.Level + 1

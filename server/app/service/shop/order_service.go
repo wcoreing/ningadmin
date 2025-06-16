@@ -40,6 +40,9 @@ func (s *OrderService) GetOrderList(req *dto.OrderListReq) (*dto.PageResult, err
 	if req.Status != "" {
 		db = db.Where("status = ?", req.Status)
 	}
+	if req.DiningType != "" {
+		db = db.Where("dining_type = ?", req.DiningType)
+	}
 	if !req.StartTime.IsZero() {
 		db = db.Where("create_time >= ?", req.StartTime)
 	}
@@ -87,6 +90,9 @@ func (s *OrderService) GetOrderList(req *dto.OrderListReq) (*dto.PageResult, err
 			TotalAmount: order.TotalAmount,
 			PayAmount:   order.PayAmount,
 			Status:      order.Status,
+			DiningType:  order.DiningType,
+			TableId:     order.TableId,
+			TableNo:     order.TableNo,
 			PayType:     order.PayType,
 			PayTime:     formatTime(order.PayTime),
 			CreateTime:  order.CreateTime.Format(timeFormat),
@@ -114,7 +120,7 @@ func (s *OrderService) GetOrderList(req *dto.OrderListReq) (*dto.PageResult, err
 // ShipOrder 订单发货
 func (s *OrderService) ShipOrder(req *dto.OrderShipReq) error {
 	// 开启事务
-	return db.DB.WnAdmin.Transaction(func(tx *gorm.DB) error {
+	return db.WnAdmin().Transaction(func(tx *gorm.DB) error {
 		// 查询订单
 		order := &shop.ShopOrder{}
 		if err := tx.Where("id = ? AND is_delete = 0", req.OrderId).First(order).Error; err != nil {
@@ -131,7 +137,7 @@ func (s *OrderService) ShipOrder(req *dto.OrderShipReq) error {
 
 		// 更新订单状态和发货信息
 		updates := map[string]interface{}{
-			"status":    "shipped",
+			"status":    "delivered",
 			"ship_time": time.Now(),
 		}
 		if err := tx.Model(order).Updates(updates).Error; err != nil {
@@ -157,7 +163,7 @@ func (s *OrderService) ShipOrder(req *dto.OrderShipReq) error {
 
 // CompleteOrder 完成订单
 func (s *OrderService) CompleteOrder(orderID uint) error {
-	return db.DB.WnAdmin.Transaction(func(tx *gorm.DB) error {
+	return db.WnAdmin().Transaction(func(tx *gorm.DB) error {
 		// 1. 更新订单状态
 		if err := tx.Model(&shop.ShopOrder{}).
 			Where("id = ?", orderID).

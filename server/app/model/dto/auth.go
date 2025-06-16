@@ -25,3 +25,11 @@ type UserInfo struct {
 	CreateTime  string    `json:"createTime"`  // 创建时间
 	Role        *RoleInfo `json:"role"`        // 角色信息
 }
+
+// RoleInfo 角色信息
+type RoleInfo struct {
+	RoleID   int64  `json:"roleId"`   // 角色ID
+	RoleName string `json:"roleName"` // 角色名称
+	RoleKey  string `json:"roleKey"`  // 角色标识
+	Status   string `json:"status"`   // 状态
+}

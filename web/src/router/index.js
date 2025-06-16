@@ -20,34 +20,7 @@ const publicRoutes = [
 
 // 动态路由
 export const asyncRoutes = [
-  {
-    path: '/',
-    component: Layout,
-    redirect: '/dashboard',
-    meta: { title: 'wnadmin', icon: 'dashboard' },
-    children: [
-      {
-        path: 'dashboard',
-        name: 'Dashboard',
-        component: () => import('@/views/dashboard/index.vue'),
-        meta: { title: '首页' }
-      }
-    ]
-  },
-
-  {
-    path: '/form',
-    component: Layout,
-    meta: { title: '表单管理', icon: 'form' },
-    children: [
-      {
-        path: 'list',
-        name: 'FormList',
-        component: () => import('@/views/form/form/index.vue'),
-        meta: { title: '表单列表' }
-      }
-    ]
-  }
+ 
 ]
 
 const router = createRouter({

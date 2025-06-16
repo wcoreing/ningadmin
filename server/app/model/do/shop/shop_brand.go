@@ -28,7 +28,7 @@ func (s *ShopBrand) TableName() string {
 
 // Query 获取查询构建器
 func (s *ShopBrand) Query() *gorm.DB {
-	query := db.DB.WnAdmin.Model(s).Where("is_delete = ?", 0)
+	query := db.WnAdmin().Model(s).Where("is_delete = ?", 0)
 
 	// 品牌名称
 	if s.Name != "" {

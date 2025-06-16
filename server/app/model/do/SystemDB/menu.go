@@ -46,7 +46,7 @@ func (MenuDO) TableName() string {
 
 // Query 获取查询构建器
 func (m *MenuDO) Query() *gorm.DB {
-	return db.DB.WnAdmin.Model(m).Where("del_flag = ?", "0")
+	return db.WnAdmin().Model(m).Where("del_flag = ?", "0")
 }
 
 // Create 创建记录
@@ -61,7 +61,7 @@ func (m *MenuDO) Update() error {
 
 // Delete 删除记录
 func (m *MenuDO) Delete() error {
-	return db.DB.WnAdmin.Transaction(func(tx *gorm.DB) error {
+	return db.WnAdmin().Transaction(func(tx *gorm.DB) error {
 		// 删除角色菜单关联
 		if err := tx.Table("sys_role_permission").Where("permission_id = ?", m.ID).Delete(nil).Error; err != nil {
 			return err
@@ -101,14 +101,14 @@ func (m *MenuDO) UpdateStatus() error {
 // HasRoles 检查菜单是否已分配角色
 func (m *MenuDO) HasRoles() (bool, error) {
 	var count int64
-	err := db.DB.WnAdmin.Model(&RoleMenuDO{}).Where("permission_id = ?", m.ID).Count(&count).Error
+	err := db.WnAdmin().Model(&RoleMenuDO{}).Where("permission_id = ?", m.ID).Count(&count).Error
 	return count > 0, err
 }
 
 // GetMenuRoles 获取菜单关联的角色ID列表
 func (m *MenuDO) GetMenuRoles() ([]int64, error) {
 	var roleIDs []int64
-	err := db.DB.WnAdmin.Table("sys_role_permission").
+	err := db.WnAdmin().Table("sys_role_permission").
 		Where("permission_id = ?", m.ID).
 		Pluck("role_id", &roleIDs).Error
 	return roleIDs, err
@@ -116,7 +116,7 @@ func (m *MenuDO) GetMenuRoles() ([]int64, error) {
 
 // UpdateMenuRoles 更新菜单关联的角色
 func (m *MenuDO) UpdateMenuRoles(roleIDs []int64) error {
-	return db.DB.WnAdmin.Transaction(func(tx *gorm.DB) error {
+	return db.WnAdmin().Transaction(func(tx *gorm.DB) error {
 		// 删除原有角色关联
 		if err := tx.Table("sys_role_permission").Where("permission_id = ?", m.ID).Delete(nil).Error; err != nil {
 			return err

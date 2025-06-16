@@ -8,6 +8,9 @@ import (
 )
 
 func Register() {
-	mylog.Log.Info("start")
+	mylog.Log.Info("系统启动中...")
+	// 初始化任务
 	task.InitTask()
+
+	mylog.Log.Info("系统启动完成")
 }
