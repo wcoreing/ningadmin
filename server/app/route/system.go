@@ -26,7 +26,7 @@ func RegisterSystemRoutes(r *gin.RouterGroup) {
 		}
 
 		// 菜单管理
-		menuController := &system.MenuController{}
+		menuController := system.NewMenuController()
 		menuGroup := systemGroup.Group("/menu")
 		{
 			menuGroup.GET("/list", menuController.List)
@@ -64,6 +64,20 @@ func RegisterSystemRoutes(r *gin.RouterGroup) {
 			userGroup.DELETE("/delete/:userId", userController.Delete)
 			userGroup.PUT("/status", userController.UpdateStatus)
 			userGroup.PUT("/password", userController.ResetPassword)
+		}
+
+		// 弹窗管理
+		popupController := system.NewPopupController()
+		popupGroup := systemGroup.Group("/popup")
+		{
+			popupGroup.GET("/list", popupController.List)
+			popupGroup.GET("/:id", popupController.GetInfo)
+			popupGroup.POST("", popupController.Add)
+			popupGroup.PUT("", popupController.Update)
+			popupGroup.DELETE("/:id", popupController.Delete)
+			popupGroup.PUT("/status", popupController.UpdateStatus)
+			popupGroup.PUT("/stats", popupController.UpdateStats)
+			popupGroup.GET("/active", popupController.GetActivePopups)
 		}
 	}
 }

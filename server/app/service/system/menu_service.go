@@ -108,15 +108,7 @@ func (s *MenuService) DeleteMenu(id int64) error {
 		return ErrHasChildren
 	}
 
-	// 检查是否已分配角色
-	hasRoles, err := menu.HasRoles()
-	if err != nil {
-		return err
-	}
-	if hasRoles {
-		return ErrMenuHasRoles
-	}
-
+	// 删除菜单（会自动删除角色权限关联）
 	return menu.Delete()
 }
 

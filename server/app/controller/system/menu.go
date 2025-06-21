@@ -14,6 +14,13 @@ type MenuController struct {
 	menuService *system.MenuService
 }
 
+// NewMenuController 创建菜单控制器
+func NewMenuController() *MenuController {
+	return &MenuController{
+		menuService: &system.MenuService{},
+	}
+}
+
 // List 获取菜单列表
 func (c *MenuController) List(ctx *gin.Context) {
 	var query dto.MenuListReq

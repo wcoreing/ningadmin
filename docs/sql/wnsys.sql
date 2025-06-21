@@ -1293,4 +1293,35 @@ CREATE TABLE `user_relation`  (
   INDEX `idx_create_time`(`create_time` ASC) USING BTREE
 ) ENGINE = InnoDB AUTO_INCREMENT = 9 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '通用用户关系表' ROW_FORMAT = Dynamic;
 
+-- ----------------------------
+-- Table structure for popup
+-- ----------------------------
+DROP TABLE IF EXISTS `popup`;
+CREATE TABLE `popup` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '弹窗ID',
+  `title` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT '' COMMENT '弹窗标题',
+  `content` text COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '弹窗内容',
+  `title_style` json DEFAULT NULL COMMENT '标题样式JSON',
+  `buttons` json DEFAULT NULL COMMENT '按钮配置JSON',
+  `trigger_type` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'manual' COMMENT '触发类型：manual/auto/schedule',
+  `trigger_rule` json DEFAULT NULL COMMENT '触发规则JSON',
+  `priority` int NOT NULL DEFAULT '0' COMMENT '优先级',
+  `auto_close` int NOT NULL DEFAULT '0' COMMENT '自动关闭时间(毫秒)',
+  `delay` int NOT NULL DEFAULT '0' COMMENT '延迟显示时间(毫秒)',
+  `mask_closable` tinyint(1) NOT NULL DEFAULT '1' COMMENT '点击遮罩是否关闭',
+  `start_time` datetime DEFAULT NULL COMMENT '开始时间',
+  `end_time` datetime DEFAULT NULL COMMENT '结束时间',
+  `status` tinyint(1) NOT NULL DEFAULT '1' COMMENT '状态：0=禁用 1=启用',
+  `show_count` bigint NOT NULL DEFAULT '0' COMMENT '显示次数',
+  `click_count` bigint NOT NULL DEFAULT '0' COMMENT '点击次数',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `is_delete` tinyint(1) NOT NULL DEFAULT '0' COMMENT '是否删除：0=否 1=是',
+  PRIMARY KEY (`id`),
+  KEY `idx_status_time` (`status`,`start_time`,`end_time`),
+  KEY `idx_trigger_type` (`trigger_type`),
+  KEY `idx_priority` (`priority`),
+  KEY `idx_create_time` (`create_time`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='弹窗表';
+
 SET FOREIGN_KEY_CHECKS = 1;
