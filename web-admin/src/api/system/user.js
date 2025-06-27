@@ -59,4 +59,12 @@ export function resetUserPassword(data) {
     method: 'put',
     data
   })
+}
+
+// 获取部门选项
+export function getDeptOptions() {
+  return request({
+    url: '/system/dept/options',
+    method: 'get'
+  })
 } 

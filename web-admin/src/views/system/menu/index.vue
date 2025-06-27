@@ -62,7 +62,7 @@
         </el-table-column>
         <el-table-column prop="type" label="类型" width="100">
           <template #default="{ row }">
-            <el-tag :type="row.type === 'menu' ? '' : (row.type === 'page' ? 'success' : 'info')">
+            <el-tag :type="row.type === 'menu' ? 'primary' : (row.type === 'page' ? 'success' : 'info')">
               {{ row.type === 'menu' ? '菜单' : (row.type === 'page' ? '页面' : '按钮') }}
             </el-tag>
           </template>
@@ -85,9 +85,12 @@
         </el-table-column>
         <el-table-column prop="status" label="状态" width="100" align="center">
           <template #default="{ row }">
-            <el-tag :type="row.status === '0' ? 'success' : 'danger'">
-              {{ row.status === '0' ? '正常' : '停用' }}
-            </el-tag>
+            <el-switch
+              v-model="row.status"
+              active-value="0"
+              inactive-value="1"
+              @change="handleStatusChange(row)"
+            />
           </template>
         </el-table-column>
         <el-table-column label="操作" width="180" fixed="right">
@@ -192,6 +195,7 @@ import {
   addMenu,
   updateMenu,
   updateMenuSort,
+  updateMenuStatus,
   deleteMenu,
   getMenuInfo,
   getMenuTree,
@@ -434,6 +438,35 @@ const handleSortChange = async (row) => {
     ElMessage.error('更新排序失败')
     // 恢复原值
     getList()
+  }
+}
+
+// 处理状态变更
+const handleStatusChange = async (row) => {
+  const text = row.status === '0' ? '启用' : '停用'
+  try {
+    await ElMessageBox.confirm(
+      `确认要"${text}"菜单"${row.name}"吗？`,
+      '警告',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+    
+    await updateMenuStatus({
+      id: row.id,
+      status: row.status
+    })
+    ElMessage.success(`${text}成功`)
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('更新状态失败:', error)
+      ElMessage.error('更新状态失败')
+    }
+    // 恢复原值
+    row.status = row.status === '0' ? '1' : '0'
   }
 }
 

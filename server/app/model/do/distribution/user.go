@@ -34,5 +34,5 @@ type DistributionUser struct {
 }
 
 func (DistributionUser) TableName() string {
-	return "distribution_user"
+	return "share_user"
 }

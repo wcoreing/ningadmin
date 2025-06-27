@@ -13,6 +13,16 @@
                   @keyup.enter="handleSearch"
                 />
               </el-form-item>
+              <el-form-item label="部门">
+                <el-select v-model="searchForm.deptId" placeholder="请选择部门" clearable style="width: 200px">
+                  <el-option
+                    v-for="item in deptOptions"
+                    :key="item.value"
+                    :label="item.label"
+                    :value="item.value"
+                  />
+                </el-select>
+              </el-form-item>
               <el-form-item label="状态">
                 <el-select v-model="searchForm.status" placeholder="用户状态" clearable  style="width: 120px; margin-left: 16px">
                   <el-option label="正常" value="0" />
@@ -34,9 +44,19 @@
         <el-table-column prop="nickName" label="用户昵称" />
         <el-table-column prop="email" label="邮箱" />
         <el-table-column prop="phonenumber" label="手机号码" />
+        <el-table-column prop="deptName" label="部门" width="150">
+          <template #default="scope">
+            <span>{{ scope.row.deptNames ? scope.row.deptNames.join(', ') : scope.row.deptName || '' }}</span>
+          </template>
+        </el-table-column>
         <el-table-column label="角色">
           <template #default="{ row }">
             {{ row.role?.roleName }}
+          </template>
+        </el-table-column>
+        <el-table-column label="数据权限">
+          <template #default="{ row }">
+            {{ getDataScopeText(row.dataScope) }}
           </template>
         </el-table-column>
         <el-table-column prop="sex" label="性别">
@@ -126,6 +146,29 @@
             <el-radio value="1">停用</el-radio>
           </el-radio-group>
         </el-form-item>
+        <el-form-item label="部门权限">
+          <div class="dept-permission-container">
+            <el-button type="primary" size="small" @click="addDeptPermission">添加部门</el-button>
+            <div v-for="(item, index) in deptPermissions" :key="index" class="dept-permission-item">
+              <el-select v-model="item.deptId" placeholder="请选择部门" style="width: 200px; margin-right: 10px;">
+                <el-option
+                  v-for="dept in deptOptions"
+                  :key="dept.value"
+                  :label="dept.label"
+                  :value="dept.value"
+                />
+              </el-select>
+              <el-select v-model="item.dataScope" placeholder="请选择数据权限" style="width: 200px; margin-right: 10px;">
+                <el-option label="全部数据权限" value="1" />
+                <el-option label="自定数据权限" value="2" />
+                <el-option label="本部门数据权限" value="3" />
+                <el-option label="本部门及以下数据权限" value="4" />
+                <el-option label="仅本人数据权限" value="5" />
+              </el-select>
+              <el-button type="danger" size="small" @click="removeDeptPermission(index)">删除</el-button>
+            </div>
+          </div>
+        </el-form-item>
         <el-form-item label="角色" prop="roleId">
           <el-select v-model="userForm.roleId" placeholder="请选择角色" clearable>
             <el-option
@@ -183,7 +226,8 @@ import {
   updateUser,
   deleteUser,
   updateUserStatus,
-  resetUserPassword
+  resetUserPassword,
+  getDeptOptions
 } from '@/api/system/user'
 import { getRoleList, getUserRoles } from '@/api/system/role'
 
@@ -192,7 +236,8 @@ const searchForm = reactive({
   pageNum: 1,
   pageSize: 10,
   userName: '',
-  status: undefined
+  status: undefined,
+  deptId: undefined
 })
 
 // 列表数据
@@ -244,6 +289,7 @@ const handleSearch = () => {
 const resetSearch = () => {
   searchForm.userName = ''
   searchForm.status = undefined
+  searchForm.deptId = undefined
   handleSearch()
 }
 
@@ -271,6 +317,8 @@ const userForm = reactive({
   phonenumber: '',
   sex: '0',
   status: '0',
+  deptIds: [],
+  dataScopes: [],
   roleId: undefined
 })
 
@@ -308,7 +356,10 @@ const handleAdd = () => {
   userForm.phonenumber = ''
   userForm.sex = '0'
   userForm.status = '0'
+  userForm.deptIds = []
+  userForm.dataScopes = []
   userForm.roleId = undefined
+  deptPermissions.value = []
   getRoles()
   dialogVisible.value = true
 }
@@ -331,6 +382,18 @@ const handleEdit = async (row) => {
     if (userInfo.role) {
       userForm.roleId = userInfo.role.roleId
     }
+    
+    // 设置部门权限信息
+    deptPermissions.value = []
+    if (userInfo.deptIds && userInfo.deptIds.length > 0) {
+      for (let i = 0; i < userInfo.deptIds.length; i++) {
+        deptPermissions.value.push({
+          deptId: userInfo.deptIds[i],
+          dataScope: userInfo.dataScopes && userInfo.dataScopes[i] ? userInfo.dataScopes[i] : '3'
+        })
+      }
+    }
+    
     await getRoles()
     dialogVisible.value = true
   } catch (error) {
@@ -350,6 +413,10 @@ const handleSubmit = async () => {
         if (dialogType.value === 'edit') {
           delete submitData.password
         }
+        
+        // 从部门权限数组中提取部门ID和数据权限
+        submitData.deptIds = deptPermissions.value.map(item => item.deptId).filter(id => id !== undefined)
+        submitData.dataScopes = deptPermissions.value.map(item => item.dataScope)
         
         await (dialogType.value === 'add' ? createUser(submitData) : updateUser(submitData))
         ElMessage.success(dialogType.value === 'add' ? '新增成功' : '修改成功')
@@ -437,6 +504,21 @@ const handleResetPwdSubmit = async () => {
 }
 
 const roleOptions = ref([])
+const deptOptions = ref([])
+
+// 部门权限管理
+const deptPermissions = ref([])
+
+const addDeptPermission = () => {
+  deptPermissions.value.push({
+    deptId: undefined,
+    dataScope: '3' // 默认本部门数据权限
+  })
+}
+
+const removeDeptPermission = (index) => {
+  deptPermissions.value.splice(index, 1)
+}
 
 const getRoles = async () => {
   try {
@@ -451,8 +533,31 @@ const getRoles = async () => {
   }
 }
 
+// 获取部门选项
+const getDeptOptionsList = async () => {
+  try {
+    const res = await getDeptOptions()
+    deptOptions.value = res || []
+  } catch (error) {
+    console.error('获取部门选项失败:', error)
+  }
+}
+
+// 获取数据权限文本
+const getDataScopeText = (dataScope) => {
+  const dataScopeMap = {
+    '1': '全部数据权限',
+    '2': '自定数据权限',
+    '3': '本部门数据权限',
+    '4': '本部门及以下数据权限',
+    '5': '仅本人数据权限'
+  }
+  return dataScopeMap[dataScope] || '未知'
+}
+
 onMounted(() => {
   getList()
+  getDeptOptionsList()
 })
 </script>
 
@@ -476,5 +581,22 @@ onMounted(() => {
   margin-top: 20px;
   display: flex;
   justify-content: flex-end;
+}
+
+.dept-permission-container {
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  padding: 15px;
+  background-color: #fafafa;
+}
+
+.dept-permission-item {
+  display: flex;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.dept-permission-item:first-child {
+  margin-top: 0;
 }
 </style> 

@@ -68,4 +68,13 @@ export function updateMenuSort(data) {
     method: 'put',
     data
   })
+}
+
+// 更新菜单状态
+export function updateMenuStatus(data) {
+  return request({
+    url: '/system/menu/status',
+    method: 'put',
+    data
+  })
 } 

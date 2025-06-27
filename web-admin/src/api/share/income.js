@@ -26,4 +26,22 @@ export function exportIncome(query) {
     params: query,
     responseType: 'blob'
   })
+}
+
+// 结算单个收益
+export function settleIncome(data) {
+  return request({
+    url: '/share/income/settle',
+    method: 'post',
+    data
+  })
+}
+
+// 批量结算收益
+export function batchSettleIncome(data) {
+  return request({
+    url: '/share/income/batch-settle',
+    method: 'post',
+    data
+  })
 } 

@@ -10,10 +10,9 @@
       </el-form-item>
       <el-form-item label="收益状态" prop="status" style="width: 250px;">
         <el-select v-model="queryParams.status" placeholder="请选择状态" clearable>
-          <el-option label="冻结中" value="0" />
-          <el-option label="已解冻" value="1" />
-          <el-option label="已失效" value="2" />
-          <el-option label="已入账" value="3" />
+          <el-option label="待结算" value="0" />
+          <el-option label="已结算" value="1" />
+          <el-option label="已取消" value="2" />
         </el-select>
       </el-form-item>
       <el-form-item label="时间范围" prop="timeRange">
@@ -36,11 +35,21 @@
     <div class="income-detail">
       <div class="detail-header">
         <div class="title">分销收益明细</div>
-        <el-button type="primary" @click="handleExport">导出数据</el-button>
+        <div class="header-actions">
+          <el-button type="success" @click="handleBatchSettle" :disabled="selectedRows.length === 0">
+            批量结算
+          </el-button>
+          <el-button type="primary" @click="handleExport">导出数据</el-button>
+        </div>
       </div>
 
       <!-- 数据表格 -->
-      <el-table v-loading="loading" :data="incomeList">
+      <el-table 
+        v-loading="loading" 
+        :data="incomeList"
+        @selection-change="handleSelectionChange"
+      >
+        <el-table-column type="selection" width="55" align="center" />
         <el-table-column prop="userId" label="用户ID" align="center" />
         <el-table-column prop="userName" label="用户昵称" align="center" />
         <el-table-column prop="orderNo" label="订单编号" align="center" width="180" />
@@ -62,6 +71,19 @@
           </template>
         </el-table-column>
         <el-table-column prop="createTime" label="创建时间" align="center" width="160" />
+        <el-table-column label="操作" align="center" width="120">
+          <template #default="scope">
+            <el-button 
+              v-if="scope.row.status === 0"
+              type="primary" 
+              size="small" 
+              @click="handleSettle(scope.row)"
+            >
+              结算
+            </el-button>
+            <span v-else class="text-muted">已处理</span>
+          </template>
+        </el-table-column>
       </el-table>
 
       <!-- 分页 -->
@@ -80,8 +102,8 @@
 
 <script setup>
 import { ref, reactive } from 'vue'
-import { getIncomeList } from '@/api/share/income'
-import { ElMessage } from 'element-plus'
+import { getIncomeList, settleIncome, batchSettleIncome } from '@/api/share/income'
+import { ElMessage, ElMessageBox } from 'element-plus'
 
 // 加载状态
 const loading = ref(false)
@@ -104,6 +126,9 @@ const dateRange = ref([])
 const incomeList = ref([])
 const total = ref(0)
 
+// 选中的行数据
+const selectedRows = ref([])
+
 // 获取收益类型文本
 const getLevelText = (level) => {
   const levelMap = {
@@ -117,10 +142,9 @@ const getLevelText = (level) => {
 // 获取状态标签类型
 const getStatusType = (status) => {
   const statusMap = {
-    0: 'info',    // 冻结中
-    1: 'success', // 已解冻
-    2: 'danger',  // 已失效
-    3: 'warning'  // 已入账
+    0: 'warning', // 待结算
+    1: 'success', // 已结算
+    2: 'danger'   // 已取消
   }
   return statusMap[status] || ''
 }
@@ -184,6 +208,75 @@ const handleExport = () => {
   ElMessage.success('导出功能待实现')
 }
 
+// 选择行变化
+const handleSelectionChange = (selection) => {
+  selectedRows.value = selection
+}
+
+// 单个结算
+const handleSettle = async (row) => {
+  try {
+    await ElMessageBox.confirm(
+      `确认要结算用户 ${row.userName} 的收益 ${row.amount} 元吗？`,
+      '结算确认',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+
+    await settleIncome({ id: row.id })
+    ElMessage.success('结算成功')
+    getList()
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('结算失败:', error)
+      ElMessage.error('结算失败')
+    }
+  }
+}
+
+// 批量结算
+const handleBatchSettle = async () => {
+  if (selectedRows.value.length === 0) {
+    ElMessage.warning('请选择要结算的收益记录')
+    return
+  }
+
+  // 过滤出可结算的记录
+  const settlableRows = selectedRows.value.filter(row => row.status === 0)
+  if (settlableRows.length === 0) {
+    ElMessage.warning('所选记录中没有可结算的收益')
+    return
+  }
+
+  const totalAmount = settlableRows.reduce((sum, row) => sum + row.amount, 0)
+
+  try {
+    await ElMessageBox.confirm(
+      `确认要批量结算 ${settlableRows.length} 条记录，总金额 ${totalAmount.toFixed(2)} 元吗？`,
+      '批量结算确认',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+
+    const ids = settlableRows.map(row => row.id)
+    await batchSettleIncome({ ids })
+    ElMessage.success('批量结算成功')
+    getList()
+    selectedRows.value = []
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('批量结算失败:', error)
+      ElMessage.error('批量结算失败')
+    }
+  }
+}
+
 // 初始化加载数据
 getList()
 </script>
@@ -204,6 +297,11 @@ getList()
       font-size: 16px;
       font-weight: bold;
     }
+
+    .header-actions {
+      display: flex;
+      gap: 12px;
+    }
   }
 }
 
@@ -217,5 +315,10 @@ getList()
   padding: 20px;
   margin-bottom: 20px;
   border-radius: 4px;
+}
+
+.text-muted {
+  color: #999;
+  font-size: 12px;
 }
 </style> 

@@ -16,6 +16,7 @@ func Handle(engine *gin.Engine) {
 	{
 		RegisterSystemRoutes(apiGroup)
 		RegisterShopRoutes(apiGroup)
+		RegisterDistributionRoutes(apiGroup)
 		RegisterShareRoutes(apiGroup)
 		RegisterFormRoutes(apiGroup)
 		RegisterFileRoutes(apiGroup)

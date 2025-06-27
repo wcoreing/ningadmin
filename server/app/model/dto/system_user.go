@@ -6,6 +6,7 @@ type SystemUserQuery struct {
 	PageSize int    `form:"pageSize"`                             // 每页数量
 	Keyword  string `form:"keyword"`                              // 搜索关键字
 	Status   string `form:"status" binding:"omitempty,oneof=0 1"` // 状态(0-正常,1-停用)
+	DeptId   int64  `form:"deptId"`                               // 部门ID
 }
 
 // CreateSystemUserReq 创建系统用户请求
@@ -58,6 +59,11 @@ type SystemUserInfoResp struct {
 	UpdateTime  string    `json:"updateTime"`  // 更新时间
 	UpdateBy    string    `json:"updateBy"`    // 更新者
 	Role        *RoleInfo `json:"role"`        // 角色信息
+	DeptIds     []int64   `json:"deptIds"`     // 部门ID列表
+	DeptNames   []string  `json:"deptNames"`   // 部门名称列表
+	DeptName    string    `json:"deptName"`    // 部门名称（逗号分隔）
+	DataScopes  []string  `json:"dataScopes"`  // 数据权限列表
+	DataScope   string    `json:"dataScope"`   // 主要数据权限（第一个部门的权限）
 }
 
 // SystemUserListResp 系统用户列表响应

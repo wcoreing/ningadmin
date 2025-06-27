@@ -175,3 +175,23 @@ func (c *MenuController) UpdateSort(ctx *gin.Context) {
 
 	response.Ok(ctx)
 }
+
+// UpdateStatus 更新菜单状态
+func (c *MenuController) UpdateStatus(ctx *gin.Context) {
+	var req struct {
+		ID     int64  `json:"id" validate:"required"`
+		Status string `json:"status" validate:"required,oneof=0 1"`
+	}
+
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		response.FailWithMessage(201, err.Error(), ctx)
+		return
+	}
+
+	if err := c.menuService.UpdateStatus(req.ID, req.Status); err != nil {
+		response.FailWithMessage(201, "更新状态失败", ctx)
+		return
+	}
+
+	response.OkWithMessage("更新成功", ctx)
+}

@@ -20,5 +20,5 @@ type DistributionWithdraw struct {
 }
 
 func (DistributionWithdraw) TableName() string {
-	return "distribution_withdraw"
+	return "share_withdraw"
 }

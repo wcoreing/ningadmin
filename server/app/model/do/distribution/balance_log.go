@@ -17,5 +17,5 @@ type DistributionBalanceLog struct {
 }
 
 func (DistributionBalanceLog) TableName() string {
-	return "distribution_balance_log"
+	return "share_balance_log"
 }

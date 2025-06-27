@@ -1,0 +1,367 @@
+openapi: 3.0.0
+info:
+  title: 部门管理API
+  description: 系统部门管理相关接口
+  version: 1.0.0
+
+paths:
+  /api/system/dept/list:
+    get:
+      summary: 获取部门列表
+      description: 获取部门列表，支持分页和条件查询
+      tags:
+        - 部门管理
+      parameters:
+        - name: pageNum
+          in: query
+          description: 页码
+          schema:
+            type: integer
+            default: 1
+        - name: pageSize
+          in: query
+          description: 每页数量
+          schema:
+            type: integer
+            default: 10
+        - name: keyword
+          in: query
+          description: 关键字搜索（部门名称、负责人）
+          schema:
+            type: string
+        - name: status
+          in: query
+          description: 部门状态（0正常 1停用）
+          schema:
+            type: string
+            enum: ["0", "1"]
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 200
+                  message:
+                    type: string
+                    example: "获取成功"
+                  data:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                        description: 总数量
+                      list:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Dept'
+
+  /api/system/dept/tree:
+    get:
+      summary: 获取部门树
+      description: 获取部门树形结构
+      tags:
+        - 部门管理
+      parameters:
+        - name: keyword
+          in: query
+          description: 关键字搜索
+          schema:
+            type: string
+        - name: status
+          in: query
+          description: 部门状态
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 200
+                  message:
+                    type: string
+                    example: "获取成功"
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DeptTree'
+
+  /api/system/dept:
+    post:
+      summary: 新增部门
+      description: 创建新的部门
+      tags:
+        - 部门管理
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDeptRequest'
+      responses:
+        '200':
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 200
+                  message:
+                    type: string
+                    example: "创建成功"
+
+    put:
+      summary: 更新部门
+      description: 更新部门信息
+      tags:
+        - 部门管理
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateDeptRequest'
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 200
+                  message:
+                    type: string
+                    example: "更新成功"
+
+  /api/system/dept/{deptId}:
+    get:
+      summary: 获取部门详情
+      description: 根据部门ID获取部门详情
+      tags:
+        - 部门管理
+      parameters:
+        - name: deptId
+          in: path
+          required: true
+          description: 部门ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 200
+                  message:
+                    type: string
+                    example: "获取成功"
+                  data:
+                    $ref: '#/components/schemas/Dept'
+
+    delete:
+      summary: 删除部门
+      description: 根据部门ID删除部门
+      tags:
+        - 部门管理
+      parameters:
+        - name: deptId
+          in: path
+          required: true
+          description: 部门ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 删除成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 200
+                  message:
+                    type: string
+                    example: "删除成功"
+
+  /api/system/dept/status:
+    put:
+      summary: 更新部门状态
+      description: 更新部门的启用/停用状态
+      tags:
+        - 部门管理
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                deptId:
+                  type: integer
+                  description: 部门ID
+                status:
+                  type: string
+                  description: 状态（0正常 1停用）
+                  enum: ["0", "1"]
+              required:
+                - deptId
+                - status
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 200
+                  message:
+                    type: string
+                    example: "更新成功"
+
+components:
+  schemas:
+    Dept:
+      type: object
+      properties:
+        deptId:
+          type: integer
+          description: 部门ID
+        parentId:
+          type: integer
+          description: 父部门ID
+        ancestors:
+          type: string
+          description: 祖级列表
+        deptName:
+          type: string
+          description: 部门名称
+        orderNum:
+          type: integer
+          description: 显示顺序
+        leader:
+          type: string
+          description: 负责人
+        phone:
+          type: string
+          description: 联系电话
+        email:
+          type: string
+          description: 邮箱
+        status:
+          type: string
+          description: 部门状态（0正常 1停用）
+        delFlag:
+          type: string
+          description: 删除标志
+        createBy:
+          type: string
+          description: 创建者
+        createTime:
+          type: string
+          format: date-time
+          description: 创建时间
+        updateBy:
+          type: string
+          description: 更新者
+        updateTime:
+          type: string
+          format: date-time
+          description: 更新时间
+
+    DeptTree:
+      allOf:
+        - $ref: '#/components/schemas/Dept'
+        - type: object
+          properties:
+            children:
+              type: array
+              items:
+                $ref: '#/components/schemas/DeptTree'
+              description: 子部门列表
+
+    CreateDeptRequest:
+      type: object
+      properties:
+        parentId:
+          type: integer
+          description: 父部门ID
+          default: 0
+        deptName:
+          type: string
+          description: 部门名称
+        orderNum:
+          type: integer
+          description: 显示顺序
+          default: 0
+        leader:
+          type: string
+          description: 负责人
+        phone:
+          type: string
+          description: 联系电话
+        email:
+          type: string
+          description: 邮箱
+        status:
+          type: string
+          description: 部门状态（0正常 1停用）
+          default: "0"
+      required:
+        - deptName
+
+    UpdateDeptRequest:
+      type: object
+      properties:
+        deptId:
+          type: integer
+          description: 部门ID
+        parentId:
+          type: integer
+          description: 父部门ID
+        deptName:
+          type: string
+          description: 部门名称
+        orderNum:
+          type: integer
+          description: 显示顺序
+        leader:
+          type: string
+          description: 负责人
+        phone:
+          type: string
+          description: 联系电话
+        email:
+          type: string
+          description: 邮箱
+        status:
+          type: string
+          description: 部门状态（0正常 1停用）
+      required:
+        - deptId
+        - deptName 

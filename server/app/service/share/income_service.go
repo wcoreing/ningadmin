@@ -269,3 +269,149 @@ func (s *IncomeService) GetIncomList(req *dto.ShareIncomeListReq) (list []distri
 
 	return
 }
+
+// SettleIncome 结算单个收益
+func (s *IncomeService) SettleIncome(incomeID uint, operator string) error {
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		// 1. 查询收益记录
+		var income share.ShareIncome
+		if err := tx.Where("id = ? AND commission_status = 0", incomeID).First(&income).Error; err != nil {
+			if err == gorm.ErrRecordNotFound {
+				return errors.New("收益记录不存在或状态不允许结算")
+			}
+			return err
+		}
+
+		// 2. 查询用户信息
+		var user share.ShareUser
+		if err := tx.Set("gorm:query_option", "FOR UPDATE").
+			Where("user_id = ?", income.UserID).First(&user).Error; err != nil {
+			return err
+		}
+
+		// 3. 计算新余额 - 直接结算到可用余额
+		newAvailableBalance := user.AvailableBalance + income.CommissionAmount
+
+		// 4. 使用乐观锁更新用户余额
+		result := tx.Model(&user).
+			Where("version = ?", user.Version).
+			Updates(map[string]interface{}{
+				"available_balance": newAvailableBalance,
+				"total_income":      gorm.Expr("total_income + ?", income.CommissionAmount),
+				"version":           gorm.Expr("version + 1"),
+			})
+
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return errors.New("余额更新失败，请重试")
+		}
+
+		// 5. 更新收益状态为已结算
+		if err := tx.Model(&income).Updates(map[string]interface{}{
+			"commission_status": 1, // 已结算
+			"process_time":      time.Now(),
+			"remark":            fmt.Sprintf("手动结算 - 操作人: %s", operator),
+		}).Error; err != nil {
+			return err
+		}
+
+		// 6. 记录资金变动日志
+		balanceLog := &share.ShareBalanceLog{
+			UserID:        income.UserID,
+			Type:          1, // 收入
+			Amount:        income.CommissionAmount,
+			BeforeBalance: user.AvailableBalance,
+			AfterBalance:  newAvailableBalance,
+			SourceType:    1, // 分享收益
+			SourceID:      &income.ID,
+			Remark:        "手动结算收益",
+		}
+		if err := tx.Create(balanceLog).Error; err != nil {
+			return err
+		}
+
+		return nil
+	})
+}
+
+// BatchSettleIncome 批量结算收益
+func (s *IncomeService) BatchSettleIncome(incomeIDs []uint, operator string) error {
+	if len(incomeIDs) == 0 {
+		return errors.New("请选择要结算的收益记录")
+	}
+
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		for _, incomeID := range incomeIDs {
+			if err := s.settleIncomeInTx(tx, incomeID, operator); err != nil {
+				return fmt.Errorf("结算收益ID %d 失败: %v", incomeID, err)
+			}
+		}
+		return nil
+	})
+}
+
+// settleIncomeInTx 在事务中结算单个收益
+func (s *IncomeService) settleIncomeInTx(tx *gorm.DB, incomeID uint, operator string) error {
+	// 1. 查询收益记录
+	var income share.ShareIncome
+	if err := tx.Where("id = ? AND commission_status = 0", incomeID).First(&income).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return fmt.Errorf("收益记录不存在或状态不允许结算")
+		}
+		return err
+	}
+
+	// 2. 查询用户信息
+	var user share.ShareUser
+	if err := tx.Set("gorm:query_option", "FOR UPDATE").
+		Where("user_id = ?", income.UserID).First(&user).Error; err != nil {
+		return err
+	}
+
+	// 3. 计算新余额 - 直接结算到可用余额
+	newAvailableBalance := user.AvailableBalance + income.CommissionAmount
+
+	// 4. 使用乐观锁更新用户余额
+	result := tx.Model(&user).
+		Where("version = ?", user.Version).
+		Updates(map[string]interface{}{
+			"available_balance": newAvailableBalance,
+			"total_income":      gorm.Expr("total_income + ?", income.CommissionAmount),
+			"version":           gorm.Expr("version + 1"),
+		})
+
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return errors.New("余额更新失败，请重试")
+	}
+
+	// 5. 更新收益状态为已结算
+	if err := tx.Model(&income).Updates(map[string]interface{}{
+		"commission_status": 1, // 已结算
+		"process_time":      time.Now(),
+		"remark":            fmt.Sprintf("批量结算 - 操作人: %s", operator),
+	}).Error; err != nil {
+		return err
+	}
+
+	// 6. 记录资金变动日志
+	balanceLog := &share.ShareBalanceLog{
+		UserID:        income.UserID,
+		Type:          1, // 收入
+		Amount:        income.CommissionAmount,
+		BeforeBalance: user.AvailableBalance,
+		AfterBalance:  newAvailableBalance,
+		SourceType:    1, // 分享收益
+		SourceID:      &income.ID,
+		Remark:        "批量结算收益",
+	}
+	if err := tx.Create(balanceLog).Error; err != nil {
+		return err
+	}
+
+	return nil
+}

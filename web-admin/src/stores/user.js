@@ -62,95 +62,78 @@ export const useUserStore = defineStore('user', () => {
     
     console.log('开始生成动态路由, 当前菜单列表:', menuList.value)
     
-    // 递归生成路由配置
-    const generateRoute = (menu) => {
-      // 递归查找第一个叶子节点
-      const findFirstLeaf = (menu) => {
-        if (!menu.children || menu.children.length === 0) {
-          return menu
-        }
-        return findFirstLeaf(menu.children[0])
-      }
-
-      // 递归收集所有叶子节点
-      const collectLeafNodes = (menu, parentPath = '') => {
-        const currentPath = parentPath ? `${parentPath}/${menu.path}` : menu.path
+    // 递归构建路由树
+    const buildRouteTree = (menus, parentPath = '') => {
+      const routeMap = new Map() // 用于避免重复路由
+      
+      menus.forEach(menu => {
+        // 构建完整的路由路径
+        const fullPath = menu.path
         
-        // 为顶级菜单（无论是否有子菜单）创建 Layout 包装
-        if (menu.parentId == 0) {
+        // 如果菜单有组件，创建路由
+        if (menu.component && menu.component.trim() !== '') {
+          // 生成唯一的路由名称，避免冲突
+          const routeName = generateUniqueRouteName(menu, fullPath)
+          
           const route = {
-            path: currentPath,
+            path: fullPath,
             component: Layout,
-            meta: { title: menu.name, icon: menu.icon }
-          }
-          
-          // 如果没有子菜单，创建一个子路由指向组件
-          if (!menu.children || menu.children.length === 0) {
-            route.redirect = `${currentPath}/index`
-            route.children = [{
-              path: 'index',
-              name: menu.name,
+            children: [{
+              path: '', // 使用空字符串作为默认子路由
+              name: routeName,
               component: () => import(/* @vite-ignore */ menu.component),
-              meta: { title: menu.name, icon: menu.icon }
-            }]
-            return route
+              meta: { 
+                title: menu.name, 
+                icon: menu.icon,
+                menuId: menu.id,
+                parentId: menu.parentId
+              }
+            }],
+            meta: { 
+              title: menu.name, 
+              icon: menu.icon,
+              menuId: menu.id,
+              parentId: menu.parentId
+            }
           }
           
-          // 如果有子菜单，处理子菜单
-          const firstLeaf = findFirstLeaf(menu)
-          const redirectPath = `${currentPath}/${firstLeaf.path}`
-          route.redirect = redirectPath
-          route.children = []
-          
-          // 递归处理子节点
-          menu.children.forEach(child => {
-            const childRoute = collectLeafNodes(child, currentPath)
-            route.children.push(childRoute)
+          // 避免重复路径
+          if (!routeMap.has(fullPath)) {
+            routeMap.set(fullPath, route)
+            console.log('生成的路由:', route)
+          } else {
+            console.warn('路由路径冲突，跳过:', fullPath, menu)
+          }
+        }
+        
+        // 递归处理子菜单
+        if (menu.children && menu.children.length > 0) {
+          const childRoutes = buildRouteTree(menu.children, fullPath)
+          childRoutes.forEach(childRoute => {
+            if (!routeMap.has(childRoute.path)) {
+              routeMap.set(childRoute.path, childRoute)
+            }
           })
-          
-          return route
         }
-        
-        // 非顶级菜单的处理逻辑
-        if (!menu.children || menu.children.length === 0) {
-          // 叶子节点
-          return {
-            path: menu.path,
-            name: menu.name,
-            component: () => import(/* @vite-ignore */ menu.component),
-            meta: { title: menu.name, icon: menu.icon }
-          }
-        }
-        
-        // 非顶级且有子菜单的节点
-        const route = {
-          path: menu.path,
-          meta: { title: menu.name, icon: menu.icon },
-          children: []
-        }
-        
-        const firstLeaf = findFirstLeaf(menu)
-        const redirectPath = `${menu.path}/${firstLeaf.path}`
-        route.redirect = redirectPath
-        
-        // 递归处理子节点
-        menu.children.forEach(child => {
-          const childRoute = collectLeafNodes(child, menu.path)
-          route.children.push(childRoute)
-        })
-        
-        return route
-      }
-
-      return collectLeafNodes(menu)
+      })
+      
+      return Array.from(routeMap.values())
     }
-
-    // 遍历顶层菜单生成路由
-    menuList.value.forEach(menu => {
-      const route = generateRoute(menu)
-      console.log('生成的路由:', route)
-      routes.push(route)
-    })
+    
+    // 生成唯一路由名称的辅助函数
+    const generateUniqueRouteName = (menu, path) => {
+      // 使用路径生成唯一名称，避免同名冲突
+      const pathSegments = path.split('/').filter(segment => segment !== '')
+      const uniqueName = pathSegments.length > 0 
+        ? pathSegments.join('_') + '_' + menu.id
+        : menu.name + '_' + menu.id
+      
+      return uniqueName
+    }
+    
+    // 构建路由树
+    const generatedRoutes = buildRouteTree(menuList.value)
+    routes.push(...generatedRoutes)
     
     console.log('最终的路由配置:', [...asyncRoutes, ...routes])
     

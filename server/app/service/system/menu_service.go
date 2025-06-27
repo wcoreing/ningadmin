@@ -250,3 +250,10 @@ func (s *MenuService) UpdateSort(id int64, sort int64) error {
 		Where("permission_id = ?", id).
 		Update("sort", sort).Error
 }
+
+// UpdateStatus 更新菜单状态
+func (s *MenuService) UpdateStatus(id int64, status string) error {
+	return db.WnAdmin().Model(&SystemDB.MenuDO{}).
+		Where("permission_id = ?", id).
+		Update("status", status).Error
+}

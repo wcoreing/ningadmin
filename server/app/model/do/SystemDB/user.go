@@ -162,3 +162,26 @@ func (u *UserDO) UpdateUserRole(roleID int64) error {
 		}).Error
 	})
 }
+
+// GetUserDepts 获取用户关联的部门信息
+func (u *UserDO) GetUserDepts() ([]UserDeptDO, error) {
+	userDeptDO := &UserDeptDO{}
+	return userDeptDO.GetUserDeptWithScope(u.ID)
+}
+
+// GetUserDeptNames 获取用户关联的部门名称
+func (u *UserDO) GetUserDeptNames() ([]string, error) {
+	var deptNames []string
+	err := db.WnAdmin().Table("sys_user_dept").
+		Select("sys_dept.dept_name").
+		Joins("LEFT JOIN sys_dept ON sys_user_dept.dept_id = sys_dept.dept_id").
+		Where("sys_user_dept.user_id = ? AND sys_dept.del_flag = ?", u.ID, "0").
+		Pluck("sys_dept.dept_name", &deptNames).Error
+	return deptNames, err
+}
+
+// GetUserDeptIds 获取用户关联的部门ID列表
+func (u *UserDO) GetUserDeptIds() ([]int64, error) {
+	userDeptDO := &UserDeptDO{}
+	return userDeptDO.GetDeptsByUserId(u.ID)
+}
