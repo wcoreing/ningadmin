@@ -1,0 +1,8 @@
+upload
+uploads
+logs
+server.log
+gin.log
+.idea
+etc/app.yaml
+etc/db.yaml
